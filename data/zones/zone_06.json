@@ -1,0 +1,214 @@
+{
+  "index": 6,
+  "id": "bridges",
+  "name": "The Bridges",
+  "phase": "Containment, Eradication & Recovery",
+  "lesson": "Following lateral movement: admin-share writes and remote service creation, RDP chains that break the allowed paths, and coordinated containment.",
+  "attack": ["T1021.002", "T1021.001", "T1569.002"],
+  "accent": "#4dd0ff",
+  "window": ["2026-11-17T09:30:00Z", "2026-11-17T11:30:00Z"],
+  "clock": {"rate": 1.25, "start": 46, "reset": 80},
+  "map_seed": 606,
+  "pivot_tip": "Pivot on src_ip for RDP. t.brooks RDPs from IT-ADM-03 every day. From a file server, never.",
+  "reaction": "A new RDP session just opened from JUMP-02 to BACKUP-01. VELVET LOCUST is spreading its bets.",
+  "nodes": [
+    {"id": "fscore", "host": "FS-CORE-01", "label": "Core File Server", "ip": "10.20.1.10", "role": "Finance and engineering shares", "evidence": ["e601", "e602"]},
+    {"id": "jump", "host": "JUMP-02", "label": "Jump Server", "ip": "10.20.2.20", "role": "Admin gateway to tier-0 servers", "evidence": ["e603"]},
+    {"id": "netpol", "host": "NET-POLICY", "label": "Network Policy", "ip": "10.20.0.15", "role": "Approved admin paths", "evidence": ["e604"]},
+    {"id": "backup", "host": "BACKUP-01", "label": "Backup Server", "ip": "10.20.1.30", "role": "Nightly backups", "evidence": ["e605"]}
+  ],
+  "evidence": {
+    "e601": {
+      "title": "5145: ADMIN$ write on FS-CORE-01", "type": "wineventlog", "host": "FS-CORE-01", "time": "2026-11-17T10:04:11Z",
+      "lines": [
+        "Event 5145  Detailed File Share access",
+        "Account      : HALCYON\\t.brooks      Source Address: 10.20.4.142 (WS-FIN-0142)",
+        "Share Name   : \\\\*\\ADMIN$            Share Path: C:\\Windows",
+        "Relative Target: svchelper.exe",
+        "Access       : WriteData (or AddFile)",
+        "Followed by 7045 (service installed) 4 seconds later."
+      ],
+      "tip": "Copy a binary into ADMIN$, then create a service that runs it: the classic remote-execution pattern, PsExec style."
+    },
+    "e602": {
+      "title": "7045: service installed on FS-CORE-01", "type": "wineventlog", "host": "FS-CORE-01", "time": "2026-11-17T10:04:15Z",
+      "lines": [
+        "Event 7045  A service was installed in the system",
+        "Service Name : Halcyon Telemetry Helper",
+        "Image Path   : %SystemRoot%\\svchelper.exe",
+        "Start Type   : demand start      Account: LocalSystem",
+        "Installed by : t.brooks via remote Service Control Manager (from 10.20.4.142)",
+        "No change ticket. 'Halcyon Telemetry' is not a product Halcyon IT owns."
+      ],
+      "tip": "Services named after the company are a favorite disguise. Check against your software inventory."
+    },
+    "e603": {
+      "title": "RDP sessions on JUMP-02 and VAULT-DB-01", "type": "wineventlog", "host": "JUMP-02", "time": "2026-11-17T10:12:30Z",
+      "lines": [
+        "TerminalServices-RemoteConnectionManager 1149 (JUMP-02)",
+        "  10:12:30  User: t.brooks   Source Network Address: 10.20.1.10 (FS-CORE-01)",
+        "TerminalServices-LocalSessionManager 21 (VAULT-DB-01)",
+        "  10:19:02  User: HALCYON\\t.brooks   Source Network Address: 10.20.2.20 (JUMP-02)",
+        "Session clipboard: enabled   Drive redirection: enabled"
+      ],
+      "tip": "Follow the source addresses hop by hop: finance desk, file server, jump server, vault."
+    },
+    "e604": {
+      "title": "Approved admin paths (NET-POLICY)", "type": "record", "host": "NET-POLICY", "time": "2026-11-01T00:00:00Z",
+      "lines": [
+        "RDP to JUMP-02          : only from IT-ADM-* (10.20.2.0/24)",
+        "RDP to tier-0 servers   : only from JUMP-02, MFA required (MFA rollout: 40%)",
+        "SMB ADMIN$ on servers   : only from IT-ADM-* and SCCM",
+        "File servers never initiate RDP.",
+        "Exception in place: VAULT-DB-01 MFA pending (payroll vendor dependency)"
+      ],
+      "tip": "Knowing the allowed paths turns lateral movement into a simple question: which hops break policy?"
+    },
+    "e605": {
+      "title": "7045: same service on BACKUP-01", "type": "wineventlog", "host": "BACKUP-01", "time": "2026-11-17T10:26:44Z",
+      "lines": [
+        "Event 7045  A service was installed in the system",
+        "Service Name : Halcyon Telemetry Helper",
+        "Image Path   : %SystemRoot%\\svchelper.exe",
+        "Installed by : t.brooks via remote SCM (from 10.20.2.20, JUMP-02)",
+        "BACKUP-01 holds the only online copy of last night's backups."
+      ],
+      "tip": "Adversaries who plan ransomware go after backups first. This is a warning sign for later."
+    }
+  },
+  "telemetry": {
+    "share": {
+      "description": "File share access (Security Events 5140/5145)",
+      "columns": ["id", "time", "host", "account", "share", "src_ip", "access", "target"],
+      "noise": 34,
+      "rows": [
+        {"id": "s-601", "time": "2026-11-17T10:04:11Z", "host": "FS-CORE-01", "user": "SYSTEM", "account": "t.brooks", "share": "\\\\*\\ADMIN$", "src_ip": "10.20.4.142", "access": "WriteData", "target": "svchelper.exe"},
+        {"id": "s-602", "time": "2026-11-17T10:26:40Z", "host": "BACKUP-01", "user": "SYSTEM", "account": "t.brooks", "share": "\\\\*\\ADMIN$", "src_ip": "10.20.2.20", "access": "WriteData", "target": "svchelper.exe"}
+      ]
+    },
+    "svc": {
+      "description": "Service installs (System Event 7045)",
+      "columns": ["id", "time", "host", "service", "image", "account", "start_type"],
+      "noise": 16,
+      "rows": [
+        {"id": "v-601", "time": "2026-11-17T10:04:15Z", "host": "FS-CORE-01", "user": "SYSTEM", "service": "Halcyon Telemetry Helper", "image": "%SystemRoot%\\svchelper.exe", "account": "LocalSystem", "start_type": "demand start"},
+        {"id": "v-602", "time": "2026-11-17T10:26:44Z", "host": "BACKUP-01", "user": "SYSTEM", "service": "Halcyon Telemetry Helper", "image": "%SystemRoot%\\svchelper.exe", "account": "LocalSystem", "start_type": "demand start"}
+      ]
+    },
+    "auth": {
+      "description": "Successful logons (Security Event 4624)",
+      "columns": ["id", "time", "host", "account", "logon_type", "src_ip", "src_host"],
+      "noise": 40,
+      "rows": [
+        {"id": "l-603", "time": "2026-11-17T10:04:09Z", "host": "FS-CORE-01", "user": "SYSTEM", "account": "t.brooks", "logon_type": 3, "src_ip": "10.20.4.142", "src_host": "WS-FIN-0142", "auth_pkg": "NTLM"},
+        {"id": "l-601", "time": "2026-11-17T10:12:30Z", "host": "JUMP-02", "user": "SYSTEM", "account": "t.brooks", "logon_type": 10, "src_ip": "10.20.1.10", "src_host": "FS-CORE-01", "auth_pkg": "Negotiate"},
+        {"id": "l-602", "time": "2026-11-17T10:19:02Z", "host": "VAULT-DB-01", "user": "SYSTEM", "account": "t.brooks", "logon_type": 10, "src_ip": "10.20.2.20", "src_host": "JUMP-02", "auth_pkg": "Negotiate"}
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "id": "o1", "type": "collect", "title": "Check the file server",
+      "desc": "Investigate FS-CORE-01 for the admin-share write.",
+      "evidence": ["e601"],
+      "hints": ["The Core File Server node.", "Press E at FS-CORE-01.", "Open '5145: ADMIN$ write on FS-CORE-01'."]
+    },
+    {
+      "id": "o2", "type": "query", "title": "Every ADMIN$ write",
+      "desc": "Hunt the share table for access to the hidden ADMIN$ share.",
+      "table": "share", "required": ["s-601", "s-602"], "max_rows": 2,
+      "solution": "search share where share~\"ADMIN$\"",
+      "success": "Two hops: FS-CORE-01 from the finance desk, BACKUP-01 from the jump server.",
+      "hints": ["The share field holds names like \\\\*\\ADMIN$.", "Use ~ to match part of the share name.", "search share where share~\"ADMIN$\""]
+    },
+    {
+      "id": "o3", "type": "query", "title": "What did they install?",
+      "desc": "Find services whose image is the dropped binary, svchelper.exe.",
+      "table": "svc", "required": ["v-601", "v-602"], "max_rows": 2,
+      "solution": "search svc where image~\"svchelper\"",
+      "success": "The same fake service on two servers. Remote service execution.",
+      "hints": ["The 5145 event named the file that was written.", "Search the image field for it.", "search svc where image~\"svchelper\""]
+    },
+    {
+      "id": "o4", "type": "query", "title": "The first bridge",
+      "desc": "Find t.brooks network logons coming from Mira's workstation (10.20.4.142).",
+      "table": "auth", "required": ["l-603"], "max_rows": 1,
+      "solution": "search auth where account=\"t.brooks\" and src_ip=\"10.20.4.142\"",
+      "success": "NTLM network logon to FS-CORE-01 from the finance desk, 2 seconds before the ADMIN$ write.",
+      "hints": ["Two conditions: the account and the source address.", "account=\"t.brooks\" and src_ip=\"10.20.4.142\".", "search auth where account=\"t.brooks\" and src_ip=\"10.20.4.142\""]
+    },
+    {
+      "id": "o5", "type": "collect", "title": "Follow the hops",
+      "desc": "Collect the service install, the RDP sessions, the approved paths, and BACKUP-01's record.",
+      "evidence": ["e602", "e603", "e604", "e605"],
+      "hints": ["FS-CORE-01 has a second item, plus JUMP-02, NET-POLICY, and BACKUP-01.", "Press E at each.", "Open all four records."]
+    },
+    {
+      "id": "o6", "type": "query", "title": "RDP that breaks policy",
+      "desc": "Find RDP logons (logon_type 10) that did NOT come from IT-ADM-03 (10.20.2.33).",
+      "table": "auth", "required": ["l-601", "l-602"], "max_rows": 2,
+      "solution": "search auth where logon_type=10 and src_ip!=\"10.20.2.33\"",
+      "success": "FS-CORE-01 to JUMP-02, then JUMP-02 to VAULT-DB-01. They're at the vault door.",
+      "dialogue": ["z6_o6_p"],
+      "hints": ["RDP shows up as logon_type 10. Tom's normal RDP comes from 10.20.2.33.", "Combine logon_type=10 with src_ip != the admin desk.", "search auth where logon_type=10 and src_ip!=\"10.20.2.33\""]
+    },
+    {
+      "id": "o7", "type": "timeline", "title": "Draw the bridges",
+      "desc": "Press L. Order the lateral movement.",
+      "events": [
+        {"id": "t1", "label": "NTLM network logon as t.brooks: WS-FIN-0142 -> FS-CORE-01"},
+        {"id": "t2", "label": "svchelper.exe written to FS-CORE-01 ADMIN$"},
+        {"id": "t3", "label": "'Halcyon Telemetry Helper' service runs svchelper.exe on FS-CORE-01"},
+        {"id": "t4", "label": "RDP as t.brooks: FS-CORE-01 -> JUMP-02"},
+        {"id": "t5", "label": "RDP as t.brooks: JUMP-02 -> VAULT-DB-01"},
+        {"id": "t6", "label": "svchelper.exe pushed to BACKUP-01 via ADMIN$ from JUMP-02"}
+      ],
+      "success": "Desk, file server, jump server, vault, and backups. The map of the intrusion is complete.",
+      "hints": ["Check the timestamps: 10:04, 10:12, 10:19, 10:26.", "The logon comes before the file write; the service comes after it.", "Logon, ADMIN$ write, service, RDP to JUMP-02, RDP to the vault, BACKUP-01."]
+    },
+    {
+      "id": "o8", "type": "choice", "board": true, "title": "Form a hypothesis",
+      "desc": "Press B. Pin the proof and choose.",
+      "prompt": "How did VELVET LOCUST cross the Bridges?",
+      "pins": ["e601", "e603"],
+      "options": [
+        {"id": "a", "text": "Tom Brooks did maintenance on the servers", "feedback": "Tom was in a meeting, file servers never initiate RDP, and there's no change ticket."},
+        {"id": "b", "text": "A worm exploited a vulnerability to spread automatically", "feedback": "Every hop used valid t.brooks credentials and admin tools. No exploit needed."},
+        {"id": "c", "text": "With stolen t.brooks credentials: SMB admin share + remote service to FS-CORE-01, then RDP through JUMP-02 to VAULT-DB-01", "correct": true},
+        {"id": "d", "text": "They only reached FS-CORE-01", "feedback": "Follow the RDP source addresses. They went further."}
+      ],
+      "success": "Confirmed: lateral movement over SMB and RDP with valid credentials.",
+      "hints": ["Pin the ADMIN$ write and the RDP sessions.", "Were the hops made with exploits or with credentials?", "Pin e601 and e603, then choose the SMB + RDP option."]
+    },
+    {
+      "id": "o9", "type": "map", "title": "Map it to ATT&CK",
+      "desc": "Press M and map all three findings.",
+      "findings": ["f1", "f2", "f3"],
+      "hints": ["Two findings are about moving between systems; one is about running code on the target.", "Lateral Movement: SMB/Windows Admin Shares and RDP. Execution: System Services.", "f1 -> T1021.002; f2 -> T1021.001; f3 -> T1569.002 Service Execution."]
+    },
+    {
+      "id": "o10", "type": "respond", "title": "Contain, all at once",
+      "desc": "Press R. Coordinated containment: preserve, then cut every foothold at the same moment.",
+      "hints": ["Containing one host at a time lets them hop to another.", "Capture triage first, then isolate the set together and remove the service.", "Triage, disable t.brooks, coordinated isolation, remove the services."]
+    }
+  ],
+  "findings": {
+    "f1": {"text": "svchelper.exe copied to FS-CORE-01 and BACKUP-01 through the ADMIN$ share", "technique": "T1021.002", "tactics": ["TA0008"], "hint": "They used a Windows file share to move.", "success": "T1021.002 lit: SMB/Windows Admin Shares."},
+    "f2": {"text": "RDP sessions as t.brooks: FS-CORE-01 -> JUMP-02 -> VAULT-DB-01", "technique": "T1021.001", "tactics": ["TA0008"], "hint": "Interactive remote desktop sessions.", "success": "T1021.001 lit: Remote Desktop Protocol."},
+    "f3": {"text": "A remotely created service ran svchelper.exe as LocalSystem", "technique": "T1569.002", "tactics": ["TA0002"], "hint": "The service control manager executed their binary.", "success": "T1569.002 lit: Service Execution."}
+  },
+  "responses": [
+    {"id": "r1", "label": "Capture triage (memory + disk) from FS-CORE-01, JUMP-02, BACKUP-01", "description": "Run the EDR triage collector on all three.", "tradeoff": "Ten minutes. Preserves svchelper's config.", "outcome": "good", "required": true, "feedback": "Triage captured. svchelper's config is in memory: it has a DNS fallback channel."},
+    {"id": "r2", "label": "Disable t.brooks and purge his Kerberos tickets everywhere", "description": "Lock the account until IT re-issues it with MFA.", "tradeoff": "Tom uses a temporary account for a day.", "outcome": "good", "required": true, "feedback": "t.brooks disabled. Every session using it drops."},
+    {"id": "r3", "label": "Coordinated isolation: WS-FIN-0142, FS-CORE-01, JUMP-02 at the same moment", "description": "EDR network containment on all three in one change.", "tradeoff": "Short outage of the file server; announced as maintenance.", "outcome": "good", "required": true, "requires": ["r1", "r2"], "clears": ["fscore", "jump"], "too_early": "Preserve triage and kill the credentials first, or they'll simply log in somewhere else.", "feedback": "All three footholds cut at once. No time for them to hop."},
+    {"id": "r4", "label": "Stop and delete the svchelper service on FS-CORE-01 and BACKUP-01", "description": "Remove the service and quarantine svchelper.exe.", "tradeoff": "Eradicates the remote-execution foothold.", "outcome": "good", "required": true, "requires": ["r1"], "clears": ["backup"], "too_early": "Capture triage first. svchelper's config is only in memory.", "feedback": "Service removed from both servers."},
+    {"id": "r5", "label": "Enforce the admin paths: RDP to servers only from JUMP-02 with MFA", "description": "Firewall rules plus finishing the MFA rollout for tier-0.", "tradeoff": "Some admin friction. Closes the bridge permanently.", "outcome": "good", "clears": ["netpol"], "feedback": "File servers can no longer start RDP. MFA required for tier-0."},
+    {"id": "r6", "label": "Isolate FS-CORE-01 by itself right now", "description": "Contain only the file server immediately.", "tradeoff": "They still hold JUMP-02 and the vault session.", "outcome": "premature", "clock": 7, "feedback": "They watched FS-CORE-01 drop and dug in on JUMP-02 and the vault. Contain the whole set together."},
+    {"id": "r7", "label": "Power off every server in the data center", "description": "Pull the plug on everything.", "tradeoff": "Destroys memory evidence and stops the business.", "outcome": "bad", "clock": 4, "feedback": "Payroll, email, and the file shares are down, and the memory evidence is gone. Targeted containment beats a blackout."}
+  ],
+  "puzzle": {"title": "CTF Cache: The Bridges", "encoding": "base64", "answer": "FLAG{admin$_plus_7045_equals_psexec}", "points": 25, "clue": "decode base64 cache"},
+  "dialogue": {
+    "intro": ["z6_intro_o", "z6_intro_p", "z6_upgrade"],
+    "outro": ["z6_outro_p", "z6_outro_o"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "index": 9,
+  "id": "debrief",
+  "name": "Debrief",
+  "phase": "Post-Incident Activity",
+  "lesson": "Lessons learned: turn the incident into a report, fixes, and better detections.",
+  "attack": [],
+  "accent": "#00f0ff",
+  "clock": {"rate": 0},
+  "nodes": [],
+  "evidence": {},
+  "telemetry": {},
+  "objectives": [],
+  "findings": {},
+  "responses": [],
+  "debrief": {
+    "summary": "On 17 November 2026, VELVET LOCUST phished Halcyon Dynamics' finance team, ran a macro that installed an implant, stole an IT admin's credentials from memory, mapped the domain, moved laterally to the ledger database, and exfiltrated part of the ledger over its C2 channel before the SOC cut every channel and defused staged ransomware.",
+    "zones": [
+      {"zone": 1, "title": "Inbox Gate", "lesson": "The From line lies; sender IP and authentication results don't.", "fix": "Quarantine DMARC failures; block macro-enabled attachments from outside."},
+      {"zone": 2, "title": "Execution Fields", "lesson": "Office apps should never spawn shells.", "fix": "ASR rule: block Office from creating child processes. Enable Script Block Logging."},
+      {"zone": 3, "title": "Clockwork Tower", "lesson": "Compare autostarts against a baseline; names lie, paths and signers don't.", "fix": "Remove local admin from users; alert on new tasks and Run keys outside IT."},
+      {"zone": 4, "title": "Shadow Archives", "lesson": "Detect LSASS access by behavior, not by tool.", "fix": "LSA Protection + Credential Guard; no admin logons on workstations."},
+      {"zone": 5, "title": "Recon Maze", "lesson": "Discovery is normal for IT and abnormal anywhere else. Context is the signal.", "fix": "Alert on discovery bursts from non-IT hosts; honeytoken accounts."},
+      {"zone": 6, "title": "The Bridges", "lesson": "Know your allowed admin paths so policy-breaking hops stand out.", "fix": "Tiered admin model, MFA for tier-0, RDP only via the jump server."},
+      {"zone": 7, "title": "Beacon Spire", "lesson": "Regular check-ins and long encoded DNS labels betray C2. Block all channels at once.", "fix": "Default-deny egress for servers; beacon and DNS-tunnel analytics."},
+      {"zone": 8, "title": "Core Vault", "lesson": "Contain in order: preserve, contain, eradicate, recover.", "fix": "Offline, immutable backups; protect backup service accounts like domain admins."}
+    ],
+    "recommendations": [
+      "Run a tabletop exercise on this scenario within 30 days.",
+      "Hunt monthly for the behaviors in this report, not just the IOCs.",
+      "Track time-to-detect and time-to-contain for every incident.",
+      "Brief Legal on the 1.21 GB exfiltration scope for notification decisions."
+    ]
+  }
+}

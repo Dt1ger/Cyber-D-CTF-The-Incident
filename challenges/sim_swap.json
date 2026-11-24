@@ -1,0 +1,26 @@
+{
+  "id": "sim_swap",
+  "title": "Seven minutes, one number",
+  "difficulty": 3,
+  "clue": "A crypto exchange account was emptied in seven minutes. The carrier's timeline export is scrambled. Submit the flag for how the attacker received the reset code.",
+  "layers": [
+    {
+      "kind": "xor",
+      "key": "58213"
+    },
+    "base64"
+  ],
+  "evidence": [
+    "analyst note  the carrier scrambles exports by xor with the ticket number",
+    "carrier       ticket 58213: SIM change approved at a store after the caller said the phone was lost",
+    "owner phone   forensic scan clean; no apps installed in the last 30 days",
+    "exchange      reset was done with an SMS code; the old password was never entered"
+  ],
+  "hints": [
+    "The artifact is hex, but plain hex decode gives noise. Something is keyed.",
+    "The key is a number in the evidence. After xor, the text uses a 64-character alphabet.",
+    "The phone was clean and no password was used. Where did the SMS go?"
+  ],
+  "artifact": "sim_swap.txt",
+  "answer_sha256": "0a1cce2f6ad0b2bf50360b792471e0c11fa1640b827849265ed0a0b8013417c4"
+}

@@ -1,0 +1,193 @@
+{
+  "_comment": "Subset of MITRE ATT&CK Enterprise used by the game. IDs and names follow attack.mitre.org. Descriptions are short paraphrases for teaching.",
+  "tactics": [
+    {"id": "TA0001", "name": "Initial Access"},
+    {"id": "TA0002", "name": "Execution"},
+    {"id": "TA0003", "name": "Persistence"},
+    {"id": "TA0004", "name": "Privilege Escalation"},
+    {"id": "TA0005", "name": "Defense Evasion"},
+    {"id": "TA0006", "name": "Credential Access"},
+    {"id": "TA0007", "name": "Discovery"},
+    {"id": "TA0008", "name": "Lateral Movement"},
+    {"id": "TA0009", "name": "Collection"},
+    {"id": "TA0011", "name": "Command and Control"},
+    {"id": "TA0010", "name": "Exfiltration"},
+    {"id": "TA0040", "name": "Impact"}
+  ],
+  "techniques": [
+    {
+      "id": "T1566.001", "name": "Phishing: Spearphishing Attachment", "tactics": ["TA0001"],
+      "description": "Adversaries email a malicious file (often a macro-enabled Office document) to a chosen target, relying on the user to open it.",
+      "detection": "Check SPF, DKIM, and DMARC results and From / Reply-To / Return-Path mismatches. Detonate attachments in a sandbox and alert on macro-enabled files from external senders.",
+      "mitigation": "Block macros in files from the internet, filter attachments at the mail gateway, enforce DMARC, and train users to report suspicious mail."
+    },
+    {
+      "id": "T1566.002", "name": "Phishing: Spearphishing Link", "tactics": ["TA0001"],
+      "description": "Adversaries email a link that leads to a malicious download or a credential-harvesting page instead of attaching a file.",
+      "detection": "Inspect URLs in mail and proxy logs for newly registered or look-alike domains and for clicks shortly after delivery.",
+      "mitigation": "URL rewriting and sandboxing at the mail gateway, web filtering, and user training."
+    },
+    {
+      "id": "T1078", "name": "Valid Accounts", "tactics": ["TA0001", "TA0003", "TA0004", "TA0005"],
+      "description": "Adversaries log in with legitimate credentials they stole, blending in with normal activity instead of using malware.",
+      "detection": "Baseline where and how each account normally logs on (hosts, logon types, hours) and alert on deviations, especially for service accounts.",
+      "mitigation": "Least privilege, MFA, unique managed passwords for service accounts, and monitoring of privileged account use."
+    },
+    {
+      "id": "T1204.002", "name": "User Execution: Malicious File", "tactics": ["TA0002"],
+      "description": "The adversary relies on a user opening a file (for example enabling macros in a document) to run their code.",
+      "detection": "Watch for Office or PDF readers spawning scripting engines, shells, or unexpected executables, and for files opened from Downloads or mail temp folders.",
+      "mitigation": "Block macros from the internet, use attack surface reduction rules for Office child processes, and train users."
+    },
+    {
+      "id": "T1059.001", "name": "Command and Scripting Interpreter: PowerShell", "tactics": ["TA0002"],
+      "description": "Adversaries abuse PowerShell to run commands and scripts, often hidden and encoded, to download and launch payloads.",
+      "detection": "Enable Script Block Logging (Event 4104) and module logging. Alert on -EncodedCommand, hidden windows, download cradles, and unusual parent processes.",
+      "mitigation": "Constrained Language Mode, script signing, removing PowerShell v2, and limiting who can run PowerShell."
+    },
+    {
+      "id": "T1059.003", "name": "Command and Scripting Interpreter: Windows Command Shell", "tactics": ["TA0002"],
+      "description": "Adversaries use cmd.exe to run commands and batch scripts.",
+      "detection": "Monitor cmd.exe launched by unusual parents and command lines with chained discovery or download commands.",
+      "mitigation": "Application control and limiting interactive shells on servers."
+    },
+    {
+      "id": "T1569.002", "name": "System Services: Service Execution", "tactics": ["TA0002"],
+      "description": "Adversaries run a program by creating or starting a Windows service, which executes it as SYSTEM.",
+      "detection": "Alert on service installs (Event 7045) with binaries in unusual paths or installed over the network from admin shares.",
+      "mitigation": "Restrict who can create services remotely and require signed service binaries."
+    },
+    {
+      "id": "T1053.005", "name": "Scheduled Task/Job: Scheduled Task", "tactics": ["TA0002", "TA0003", "TA0004"],
+      "description": "Adversaries create scheduled tasks to run their code at logon, at boot, or on a timer, often as SYSTEM, so it survives reboots.",
+      "detection": "Collect Event 4698 (task created) and task XML. Look for tasks running from user-writable paths, created by non-admin users, or named to imitate vendors.",
+      "mitigation": "Limit who can create tasks that run as SYSTEM, audit task creation, and remove local admin rights from regular users."
+    },
+    {
+      "id": "T1547.001", "name": "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder", "tactics": ["TA0003", "TA0004"],
+      "description": "Adversaries add a Run key value or a Startup folder entry so their program launches every time the user logs on.",
+      "detection": "Monitor writes to Run / RunOnce keys (Sysmon Event 13) and compare autostart entries against an approved baseline, watching for look-alike names.",
+      "mitigation": "Application control, least privilege, and regular autoruns baselining."
+    },
+    {
+      "id": "T1543.003", "name": "Create or Modify System Process: Windows Service", "tactics": ["TA0003", "TA0004"],
+      "description": "Adversaries install or modify a Windows service so their program starts automatically with high privileges.",
+      "detection": "Watch Event 7045 and service registry changes for unusual binary paths and new auto-start services.",
+      "mitigation": "Restrict service creation rights and monitor service configuration changes."
+    },
+    {
+      "id": "T1027", "name": "Obfuscated Files or Information", "tactics": ["TA0005"],
+      "description": "Adversaries encode, encrypt, or pack commands and files to hide their purpose from analysts and tools.",
+      "detection": "Decode Base64 and other encodings in command lines, flag high-entropy strings, and use Script Block Logging to see de-obfuscated content.",
+      "mitigation": "Antimalware with script scanning (AMSI) and behavior-based detection."
+    },
+    {
+      "id": "T1003.001", "name": "OS Credential Dumping: LSASS Memory", "tactics": ["TA0006"],
+      "description": "Adversaries read the memory of the LSASS process to steal password hashes, Kerberos tickets, and sometimes cleartext credentials of logged-on users.",
+      "detection": "Sysmon Event 10 for processes opening lsass.exe with high access rights (such as 0x1FFFFF or 0x1010), plus dump files created by unusual processes.",
+      "mitigation": "Enable LSA protection (RunAsPPL) and Credential Guard, remove local admin rights, and avoid logging privileged accounts on to workstations."
+    },
+    {
+      "id": "T1003.002", "name": "OS Credential Dumping: Security Account Manager", "tactics": ["TA0006"],
+      "description": "Adversaries extract local account hashes from the SAM registry hive.",
+      "detection": "Watch for reg.exe saving HKLM\\SAM or SYSTEM hives and access to SAM files by unusual processes.",
+      "mitigation": "Unique local admin passwords (LAPS) and restricting registry backup rights."
+    },
+    {
+      "id": "T1087", "name": "Account Discovery", "tactics": ["TA0007"],
+      "description": "Adversaries list user and group accounts to learn who has privileges worth stealing.",
+      "detection": "Alert on net user / net group / directory queries from hosts or users that do not normally run them, and on group enumeration events on domain controllers.",
+      "mitigation": "Hard to prevent; focus on detection and limiting what regular users can enumerate."
+    },
+    {
+      "id": "T1087.002", "name": "Account Discovery: Domain Account", "tactics": ["TA0007"],
+      "description": "Adversaries list domain users and groups, such as Domain Admins, to find privileged accounts.",
+      "detection": "Watch for net user /domain, net group \"Domain Admins\" /domain, and LDAP enumeration from unexpected hosts.",
+      "mitigation": "Detection-focused; restrict anonymous and unnecessary directory enumeration."
+    },
+    {
+      "id": "T1018", "name": "Remote System Discovery", "tactics": ["TA0007"],
+      "description": "Adversaries look for other hosts on the network, using ping sweeps, net view, nltest, or port probes, to plan lateral movement.",
+      "detection": "Alert on ping sweeps, one host touching many internal hosts on SMB or RDP ports in a short time, and nltest /dclist from workstations.",
+      "mitigation": "Network segmentation and host firewalls that block workstation-to-workstation traffic."
+    },
+    {
+      "id": "T1082", "name": "System Information Discovery", "tactics": ["TA0007"],
+      "description": "Adversaries gather details about the operating system and hardware of a host.",
+      "detection": "Monitor systeminfo, hostname, and similar commands run by unusual parent processes.",
+      "mitigation": "Detection-focused."
+    },
+    {
+      "id": "T1021.001", "name": "Remote Services: Remote Desktop Protocol", "tactics": ["TA0008"],
+      "description": "Adversaries use RDP with valid credentials to log on interactively to other hosts.",
+      "detection": "Logon type 10 events and RDP connections (TCP 3389) between hosts that do not normally talk, especially from servers or with service accounts.",
+      "mitigation": "Limit RDP to jump hosts from admin subnets, require MFA and Network Level Authentication, and deny RDP to service accounts."
+    },
+    {
+      "id": "T1021.002", "name": "Remote Services: SMB/Windows Admin Shares", "tactics": ["TA0008"],
+      "description": "Adversaries use valid credentials to reach hidden admin shares (C$, ADMIN$) over SMB to copy and run tools on remote hosts.",
+      "detection": "Event 5140/5145 access to ADMIN$ or C$, logon type 3 from unusual sources, and service installs right after a network logon.",
+      "mitigation": "Block SMB between workstations, use unique local admin passwords, and restrict admin share access."
+    },
+    {
+      "id": "T1021.006", "name": "Remote Services: Windows Remote Management", "tactics": ["TA0008"],
+      "description": "Adversaries use WinRM (PowerShell remoting) to run commands on remote hosts.",
+      "detection": "Monitor wsmprovhost.exe child processes and WinRM connections on TCP 5985/5986.",
+      "mitigation": "Restrict WinRM to admin hosts and accounts."
+    },
+    {
+      "id": "T1560.001", "name": "Archive Collected Data: Archive via Utility", "tactics": ["TA0009"],
+      "description": "Adversaries compress and often encrypt collected data with tools like 7-Zip or WinRAR before stealing it.",
+      "detection": "Alert on archive utilities creating large archives in staging folders such as PerfLogs, Public, or Temp, especially on servers.",
+      "mitigation": "Application control on servers and data loss prevention monitoring."
+    },
+    {
+      "id": "T1071.001", "name": "Application Layer Protocol: Web Protocols", "tactics": ["TA0011"],
+      "description": "Adversaries hide command and control in normal-looking HTTP/HTTPS traffic, often beaconing on a regular interval.",
+      "detection": "Look for regular check-ins (fixed interval with small jitter), consistent request sizes, odd user agents, and rare destination domains.",
+      "mitigation": "Proxy enforcement with domain categorization, TLS inspection where allowed, and blocking newly seen domains."
+    },
+    {
+      "id": "T1071.004", "name": "Application Layer Protocol: DNS", "tactics": ["TA0011"],
+      "description": "Adversaries tunnel command and control through DNS queries and responses, often using TXT records and long random subdomains.",
+      "detection": "Watch for high volumes of TXT queries, long high-entropy subdomains under one parent domain, and hosts querying external resolvers directly.",
+      "mitigation": "Force DNS through internal resolvers, block outbound port 53 from hosts, and use DNS filtering."
+    },
+    {
+      "id": "T1573", "name": "Encrypted Channel", "tactics": ["TA0011"],
+      "description": "Adversaries encrypt command and control traffic with a known or custom algorithm to hide its contents.",
+      "detection": "Look for unusual TLS fingerprints, self-signed certificates, and encrypted traffic on non-standard ports.",
+      "mitigation": "TLS inspection and egress filtering."
+    },
+    {
+      "id": "T1105", "name": "Ingress Tool Transfer", "tactics": ["TA0011"],
+      "description": "Adversaries download extra tools or payloads from external infrastructure into the victim network.",
+      "detection": "Scripting engines or Office apps downloading executables, and new binaries written to ProgramData, Temp, or Public.",
+      "mitigation": "Web filtering and blocking downloads of executables from uncategorized domains."
+    },
+    {
+      "id": "T1041", "name": "Exfiltration Over C2 Channel", "tactics": ["TA0010"],
+      "description": "Adversaries steal data over the same channel they already use for command and control.",
+      "detection": "Unusually large outbound transfers to C2 destinations, upload volume far above download volume, and transfers at odd hours.",
+      "mitigation": "Egress filtering, data loss prevention, and blocking known C2 infrastructure."
+    },
+    {
+      "id": "T1567.002", "name": "Exfiltration Over Web Service: Exfiltration to Cloud Storage", "tactics": ["TA0010"],
+      "description": "Adversaries upload stolen data to legitimate cloud storage services to blend in.",
+      "detection": "Large uploads to cloud storage from servers or accounts that never use them.",
+      "mitigation": "Restrict sanctioned cloud storage and inspect uploads."
+    },
+    {
+      "id": "T1486", "name": "Data Encrypted for Impact", "tactics": ["TA0040"],
+      "description": "Adversaries encrypt data on target systems (ransomware) to disrupt the business and extort payment.",
+      "detection": "Staged encryptor binaries, ransom notes, scheduled tasks pointing at data volumes, and mass file modifications.",
+      "mitigation": "Offline, tested backups; least privilege; and application control on servers."
+    },
+    {
+      "id": "T1490", "name": "Inhibit System Recovery", "tactics": ["TA0040"],
+      "description": "Adversaries delete backups and shadow copies so victims cannot recover without paying.",
+      "detection": "vssadmin delete shadows, wbadmin delete catalog, and backup service tampering.",
+      "mitigation": "Offline backups and protecting backup infrastructure with separate credentials."
+    }
+  ]
+}

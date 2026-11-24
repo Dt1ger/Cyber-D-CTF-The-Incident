@@ -1,0 +1,76 @@
+{
+  "characters": [
+    {
+      "id": "demetri",
+      "name": "Demetri",
+      "role": "Ethical Hacker / Incident Responder",
+      "bio": "Calm, methodical, protective of the network. Contain smart, not fast.",
+      "accent": "#ff2a4a",
+      "perk": {
+        "id": "steady_hand",
+        "name": "Steady Hand",
+        "description": "Containment is less likely to tip off the adversary, and each correct response action slows the Breach Clock."
+      },
+      "select_line": "Easy now. Let's see who's knocking on Halcyon's door.",
+      "palette": {
+        "skin": "#7a4a2e",
+        "hair": "#16110d",
+        "hair_style": "short",
+        "beard": "#16110d",
+        "hoodie": "#c8102e",
+        "hoodie_shade": "#8e0b20",
+        "legs": "#2b4a8a",
+        "shoes": ["#f4f4f4", "#c8102e", "#111111"],
+        "accent": "#ff2a4a"
+      }
+    },
+    {
+      "id": "sasha",
+      "name": "Sasha",
+      "role": "Hacker / CTF Player",
+      "bio": "Curious, quick, and playful. If I were them, where would I hide?",
+      "accent": "#39ff14",
+      "perk": {
+        "id": "flag_sense",
+        "name": "Flag Sense",
+        "description": "The Hunt Terminal suggests one pivot per zone, and every zone hides a bonus decoding puzzle."
+      },
+      "select_line": "Ooh, a live one? Let's get this flag. GG in advance, Velvet Locust.",
+      "palette": {
+        "skin": "#e2b48c",
+        "hair": "#7dff2a",
+        "hair_style": "long",
+        "beard": null,
+        "hoodie": "#6b2fb3",
+        "hoodie_shade": "#4a1f80",
+        "legs": "#141414",
+        "shoes": ["#c9a25e", "#a7823f", "#4f3c22"],
+        "accent": "#39ff14"
+      }
+    },
+    {
+      "id": "aisha_256",
+      "name": "Aisha_256",
+      "role": "Stealth Intrusion Analyst / Creative Coder",
+      "bio": "Elegant, unreadable, and always two steps ahead.",
+      "accent": "#ff8a1e",
+      "perk": {
+        "id": "pattern_breaker",
+        "name": "Pattern Breaker",
+        "description": "Each piece of evidence logged pulls the Breach Clock back and surfaces a weak point."
+      },
+      "select_line": "You won't see me until I'm already inside. Let's open a path.",
+      "palette": {
+        "skin": "#8a5a3a",
+        "hair": "#1a2744",
+        "hair_style": "long",
+        "beard": null,
+        "hoodie": "#ff8a1e",
+        "hoodie_shade": "#c45e00",
+        "legs": "#1c2430",
+        "shoes": ["#f4f4f4", "#ff8a1e", "#111111"],
+        "accent": "#ff8a1e"
+      }
+    }
+  ]
+}

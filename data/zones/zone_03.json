@@ -1,0 +1,189 @@
+{
+  "index": 3,
+  "id": "clockwork_tower",
+  "name": "The Clockwork Tower",
+  "phase": "Detection & Analysis",
+  "lesson": "Finding persistence: scheduled tasks and registry Run keys, and comparing autostarts against a known-good baseline.",
+  "attack": ["T1053.005", "T1547.001"],
+  "accent": "#ffb000",
+  "window": ["2026-11-17T08:30:00Z", "2026-11-17T10:30:00Z"],
+  "clock": {"rate": 1.1, "start": 22, "reset": 74},
+  "map_seed": 303,
+  "pivot_tip": "Pivot on author and path. Real Microsoft tasks are authored by Microsoft; real OneDrive lives in AppData\\Local.",
+  "reaction": "updchk.exe re-registered itself under a new name. VELVET LOCUST is hardening its foothold.",
+  "nodes": [
+    {"id": "ws0142", "host": "WS-FIN-0142", "label": "Mira's Workstation", "ip": "10.20.4.142", "role": "Finance workstation (m.okafor)", "evidence": ["e301"]},
+    {"id": "sched", "host": "SCHED-SVC", "label": "Task Scheduler Vault", "ip": "10.20.4.142", "role": "Exported task definitions", "evidence": ["e302"]},
+    {"id": "hive", "host": "REG-HIVE", "label": "Registry Hive Export", "ip": "10.20.4.142", "role": "NTUSER.DAT export for m.okafor", "evidence": ["e303"]},
+    {"id": "gpo", "host": "GPO-01", "label": "Baseline Server", "ip": "10.20.0.12", "role": "Approved software and autostart baseline", "evidence": ["e304"]}
+  ],
+  "evidence": {
+    "e301": {
+      "title": "Autoruns snapshot: WS-FIN-0142", "type": "autoruns", "host": "WS-FIN-0142", "time": "2026-11-17T10:05:00Z",
+      "lines": [
+        "ENTRY                                   IMAGE PATH                                         SIGNED",
+        "HKLM\\...\\Run\\SecurityHealth             C:\\Windows\\system32\\SecurityHealthSystray.exe      Microsoft",
+        "HKCU\\...\\Run\\OneDrive                  C:\\Users\\m.okafor\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe  Microsoft",
+        "HKCU\\...\\Run\\OneDriveSync              C:\\Users\\m.okafor\\AppData\\Roaming\\odsync.exe       (not signed)",
+        "Task \\Halcyon\\InventoryAgent           C:\\Program Files\\Halcyon\\Inventory\\invagent.exe   Halcyon Dynamics",
+        "Task \\HalcyonUpdateCheck                C:\\ProgramData\\HalcyonSvc\\updchk.exe               (not signed)"
+      ],
+      "tip": "Unsigned entries in user-writable paths, named to look like something trusted, are prime suspects."
+    },
+    "e302": {
+      "title": "Task XML: \\HalcyonUpdateCheck", "type": "task_xml", "host": "SCHED-SVC", "time": "2026-11-17T09:16:40Z",
+      "lines": [
+        "<Task>",
+        "  <RegistrationInfo><Author>HALCYON\\m.okafor</Author>",
+        "    <Date>2026-11-17T09:16:40</Date></RegistrationInfo>",
+        "  <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>",
+        "  <Principals><Principal><UserId>S-1-5-18</UserId>  <!-- SYSTEM -->",
+        "    <RunLevel>HighestAvailable</RunLevel></Principal></Principals>",
+        "  <Actions><Exec><Command>C:\\ProgramData\\HalcyonSvc\\updchk.exe</Command></Exec></Actions>",
+        "</Task>",
+        "Security log 4698: A scheduled task was created. Creator: HALCYON\\m.okafor"
+      ],
+      "tip": "A finance user authoring a SYSTEM task that runs from ProgramData at every logon is not normal IT."
+    },
+    "e303": {
+      "title": "Run key export: OneDriveSync", "type": "registry", "host": "REG-HIVE", "time": "2026-11-17T09:17:05Z",
+      "lines": [
+        "[HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run]",
+        "\"OneDrive\"=\"\\\"C:\\\\Users\\\\m.okafor\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\OneDrive.exe\\\" /background\"",
+        "\"OneDriveSync\"=\"C:\\\\Users\\\\m.okafor\\\\AppData\\\\Roaming\\\\odsync.exe\"",
+        "",
+        "Sysmon Event 13 (RegistryValueSet) 2026-11-17 09:17:05",
+        "  Image: C:\\ProgramData\\HalcyonSvc\\updchk.exe",
+        "  TargetObject: HKU\\S-1-5-21-...-1142\\...\\Run\\OneDriveSync"
+      ],
+      "tip": "Masquerading: the name imitates OneDrive, but the path and the process that wrote it give it away."
+    },
+    "e304": {
+      "title": "Approved autostart baseline", "type": "record", "host": "GPO-01", "time": "2026-11-01T00:00:00Z",
+      "lines": [
+        "HALCYON WORKSTATION BASELINE v12 (approved autostarts)",
+        "Run: SecurityHealth   -> %windir%\\system32\\SecurityHealthSystray.exe",
+        "Run: OneDrive         -> %LOCALAPPDATA%\\Microsoft\\OneDrive\\OneDrive.exe /background",
+        "Run: ChatSuite        -> %LOCALAPPDATA%\\ChatSuite\\Update.exe",
+        "Tasks: \\Microsoft\\* (author Microsoft Corporation)",
+        "       \\Halcyon\\InventoryAgent (author HALCYON\\svc_sccm, Program Files)",
+        "       \\OneDrive Standalone Update Task-*",
+        "Policy: regular users are NOT local administrators. (Exception list: m.okafor - legacy)"
+      ],
+      "tip": "Baselines turn 'looks odd' into 'is not approved'. Note the exception: Mira is a local admin, so the malware could create SYSTEM tasks."
+    }
+  },
+  "telemetry": {
+    "task": {
+      "description": "Scheduled task creation (Security Event 4698)",
+      "columns": ["id", "time", "host", "task_name", "action", "run_as", "author"],
+      "noise": 30,
+      "rows": [
+        {"id": "k-301", "time": "2026-11-17T09:16:40Z", "host": "WS-FIN-0142", "user": "m.okafor", "task_name": "\\HalcyonUpdateCheck", "action": "C:\\ProgramData\\HalcyonSvc\\updchk.exe", "trigger": "At log on of any user", "run_as": "SYSTEM", "author": "HALCYON\\m.okafor"}
+      ]
+    },
+    "reg": {
+      "description": "Registry value writes (Sysmon Event 13)",
+      "columns": ["id", "time", "host", "name", "key", "data"],
+      "noise": 30,
+      "rows": [
+        {"id": "r-301", "time": "2026-11-17T09:17:05Z", "host": "WS-FIN-0142", "user": "m.okafor", "name": "updchk.exe", "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDriveSync", "data": "C:\\Users\\m.okafor\\AppData\\Roaming\\odsync.exe"}
+      ]
+    },
+    "proc": {
+      "description": "Process creation (Sysmon Event 1)",
+      "columns": ["id", "time", "host", "user", "parent", "name", "cmdline"],
+      "noise": 30,
+      "rows": [
+        {"id": "p-301", "time": "2026-11-17T09:16:39Z", "host": "WS-FIN-0142", "user": "m.okafor", "parent": "updchk.exe", "name": "schtasks.exe", "cmdline": "schtasks /create /tn \"HalcyonUpdateCheck\" /tr \"C:\\ProgramData\\HalcyonSvc\\updchk.exe\" /sc onlogon /ru SYSTEM /rl HIGHEST /f", "pid": 6230, "ppid": 6012},
+        {"id": "p-302", "time": "2026-11-17T09:17:31Z", "host": "WS-FIN-0142", "user": "m.okafor", "parent": "updchk.exe", "name": "odsync.exe", "cmdline": "\"C:\\Users\\m.okafor\\AppData\\Roaming\\odsync.exe\" -install", "pid": 6301, "ppid": 6012}
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "id": "o1", "type": "collect", "title": "Snapshot the autostarts",
+      "desc": "Investigate WS-FIN-0142 for its autoruns snapshot.",
+      "evidence": ["e301"],
+      "hints": ["Mira's workstation again.", "Press E at WS-FIN-0142.", "Open 'Autoruns snapshot: WS-FIN-0142'."]
+    },
+    {
+      "id": "o2", "type": "query", "title": "Find the rogue scheduled task",
+      "desc": "Hunt the task table for a task on WS-FIN-0142 that wasn't authored by Microsoft or IT.",
+      "table": "task", "required": ["k-301"], "max_rows": 2,
+      "solution": "search task where host=\"WS-FIN-0142\" and author~\"m.okafor\"",
+      "success": "\\HalcyonUpdateCheck: authored by a finance user, runs as SYSTEM at logon.",
+      "hints": ["Searching for ProgramData also finds Defender's legitimate tasks. Try the author field.", "Who authors tasks normally? Microsoft and HALCYON\\svc_sccm. Who else shows up?", "search task where host=\"WS-FIN-0142\" and author~\"m.okafor\""]
+    },
+    {
+      "id": "o3", "type": "query", "title": "Find the rogue Run key",
+      "desc": "Hunt the reg table for a Run key pointing into AppData\\Roaming.",
+      "table": "reg", "required": ["r-301"], "max_rows": 2,
+      "solution": "search reg where key~\"CurrentVersion\\Run\" and data~\"Roaming\"",
+      "success": "OneDriveSync -> AppData\\Roaming\\odsync.exe. Real OneDrive lives in AppData\\Local.",
+      "hints": ["Run keys live under CurrentVersion\\Run in the key path.", "Combine a key condition with a data condition using 'and'.", "search reg where key~\"CurrentVersion\\Run\" and data~\"Roaming\""]
+    },
+    {
+      "id": "o4", "type": "collect", "title": "Gather the artifacts",
+      "desc": "Collect the task XML, the Run key export, and the approved baseline.",
+      "evidence": ["e302", "e303", "e304"],
+      "hints": ["Three nodes: SCHED-SVC, REG-HIVE, GPO-01.", "Press E at each one.", "Open the task XML, the Run key export, and the baseline."]
+    },
+    {
+      "id": "o5", "type": "choice", "title": "Spot the masquerade",
+      "desc": "Press B and answer.",
+      "prompt": "What gives away the 'OneDriveSync' Run key as malicious?",
+      "options": [
+        {"id": "a", "text": "Its name contains 'Sync'", "feedback": "Names are free to choose. Judge by path, signer, and who wrote it."},
+        {"id": "b", "text": "It imitates OneDrive but points to an unsigned binary in AppData\\Roaming, written by updchk.exe, and isn't in the baseline", "correct": true},
+        {"id": "c", "text": "All Run keys are malicious", "feedback": "Most are legitimate: SecurityHealth and the real OneDrive are approved."},
+        {"id": "d", "text": "It was created after 9:00 AM", "feedback": "Time alone proves nothing. Lots of legitimate software installs during work hours."}
+      ],
+      "success": "Right: path, signer, writer, and baseline all disagree with the name.",
+      "hints": ["Compare against the baseline and the real OneDrive entry.", "Where does real OneDrive live? Who wrote this key?", "The answer mentions AppData\\Roaming, unsigned, and updchk.exe."]
+    },
+    {
+      "id": "o6", "type": "choice", "board": true, "title": "Form a hypothesis",
+      "desc": "Press B. Pin the proof and choose.",
+      "prompt": "How is VELVET LOCUST surviving reboots on WS-FIN-0142?",
+      "pins": ["e302", "e303"],
+      "options": [
+        {"id": "a", "text": "Two persistence mechanisms: a SYSTEM scheduled task at logon and a per-user Run key masquerading as OneDrive", "correct": true},
+        {"id": "b", "text": "A new Windows service", "feedback": "Check the service list later. Here the evidence is a task and a Run key."},
+        {"id": "c", "text": "It doesn't persist; a reboot would clean it", "feedback": "The task and Run key both relaunch it at logon."},
+        {"id": "d", "text": "Only the scheduled task", "feedback": "Look at the registry export too. Adversaries often plant backups."}
+      ],
+      "success": "Confirmed: belt and braces persistence.",
+      "hints": ["Pin the task XML and the Run key export.", "How many separate mechanisms did you find?", "Pin e302 and e303, then choose the 'two persistence mechanisms' option."]
+    },
+    {
+      "id": "o7", "type": "map", "title": "Map it to ATT&CK",
+      "desc": "Press M and map both findings. Think about what the adversary achieved.",
+      "findings": ["f1", "f2"],
+      "hints": ["Both findings keep the adversary in place across reboots.", "Persistence column.", "f1 -> T1053.005 Scheduled Task; f2 -> T1547.001 Registry Run Keys (Persistence)."]
+    },
+    {
+      "id": "o8", "type": "respond", "title": "Respond",
+      "desc": "Press R. Preserve, then remove persistence and fix the root cause.",
+      "hints": ["Export evidence before deleting it.", "Remove both mechanisms and quarantine both binaries.", "Export, delete task, remove Run value, quarantine binaries, remove local admin."]
+    }
+  ],
+  "findings": {
+    "f1": {"text": "A SYSTEM scheduled task relaunches updchk.exe at every logon", "technique": "T1053.005", "tactics": ["TA0003", "TA0004"], "hint": "Which Windows feature runs programs on a trigger?", "success": "T1053.005 lit: Scheduled Task."},
+    "f2": {"text": "A Run key named like OneDrive starts odsync.exe at user logon", "technique": "T1547.001", "tactics": ["TA0003", "TA0004"], "hint": "It's an autostart entry in the registry.", "success": "T1547.001 lit: Registry Run Keys."}
+  },
+  "responses": [
+    {"id": "r1", "label": "Export the task XML, Run key, and both binaries as evidence", "description": "Preserve everything with hashes before changing the host.", "tradeoff": "Takes a minute. You can't un-delete evidence.", "outcome": "good", "required": true, "feedback": "Evidence exported and hashed."},
+    {"id": "r2", "label": "Delete the \\HalcyonUpdateCheck task", "description": "Remove the malicious scheduled task.", "tradeoff": "Removes one persistence path.", "outcome": "good", "required": true, "requires": ["r1"], "too_early": "Export it first. Once deleted, the task XML and its timestamps are gone.", "feedback": "Task deleted."},
+    {"id": "r3", "label": "Remove the OneDriveSync Run value", "description": "Delete the masquerading Run key value.", "tradeoff": "Removes the second persistence path.", "outcome": "good", "required": true, "requires": ["r1"], "clears": ["hive"], "too_early": "Export the registry value first.", "feedback": "Run value removed."},
+    {"id": "r4", "label": "Quarantine updchk.exe and odsync.exe", "description": "EDR quarantine of both binaries.", "tradeoff": "Removes the payloads the persistence launches.", "outcome": "good", "required": true, "requires": ["r1"], "clears": ["ws0142"], "too_early": "Copy the binaries into evidence first.", "feedback": "Both binaries quarantined."},
+    {"id": "r5", "label": "Remove m.okafor from local Administrators", "description": "Close the baseline exception that let the malware create SYSTEM tasks.", "tradeoff": "Mira may need IT for some installs. Worth it.", "outcome": "good", "required": true, "clears": ["gpo"], "feedback": "Exception closed. Root cause fixed."},
+    {"id": "r6", "label": "Delete every scheduled task on the host", "description": "Wipe the whole task library.", "tradeoff": "Breaks Windows maintenance and destroys evidence.", "outcome": "bad", "clock": 3, "feedback": "Defender scans, updates, and inventory just broke, and the evidence went with them."},
+    {"id": "r7", "label": "Wait 24 hours to see what the task does", "description": "Observe without acting.", "tradeoff": "VELVET LOCUST keeps moving while you watch.", "outcome": "bad", "clock": 8, "feedback": "You already know what it does. Waiting just gave them time."}
+  ],
+  "puzzle": {"title": "CTF Cache: Clockwork Tower", "encoding": "base64", "answer": "FLAG{schtasks_onlogon_ru_system}", "points": 25, "clue": "decode base64 cache"},
+  "dialogue": {
+    "intro": ["z3_intro_o", "z3_intro_p", "z3_upgrade"],
+    "outro": ["z3_outro_p", "z3_outro_o"]
+  }
+}

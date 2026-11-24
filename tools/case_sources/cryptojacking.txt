@@ -1,0 +1,12 @@
+build-07 (10.20.9.14) incident notes
+The cloud bill for build-07 rose 40x in nine days and the CPU sits at 100 percent around the clock.
+Way in: the build dashboard was exposed with its default admin password.
+Process: kworkerd in /tmp/.cache, restarted every five minutes by cron.
+Traffic: one steady connection to pool.mine.invalid on port 3333 and nothing else outbound.
+Files: none encrypted, none deleted, no archive staged.
+ATT&CK for the impact: T1496 Resource Hijacking.
+Candidate tags:
+FLAG{default_creds}
+FLAG{ransomware}
+FLAG{data_exfiltration}
+FLAG{cryptojacking}

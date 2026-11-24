@@ -1,0 +1,9 @@
+Operator notes recovered from the kit on portal-login.test
+Lure: an email telling staff their password expires today, with a link to portal-login.test.
+Page: a copy of the portal.example sign-in, served from 192.0.2.61.
+The page takes the username, the password, and the one-time code, and relays all three to the real portal while the user waits.
+Accounts that typed a code were signed in by the operator within 40 seconds.
+Tags we use in reports to the buyer:
+FLAG{password_reset}
+FLAG{mfa_fatigue}
+FLAG{fake_login_portal}

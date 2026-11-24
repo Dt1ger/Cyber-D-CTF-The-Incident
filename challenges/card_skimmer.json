@@ -1,0 +1,24 @@
+{
+  "id": "card_skimmer",
+  "title": "Checkout page, extra listener",
+  "difficulty": 3,
+  "clue": "Cards used only on shop.example are turning up in fraud. The fraud team's summary was wrapped three times before it reached you. Submit the one theory the evidence supports.",
+  "layers": [
+    "hex",
+    "base64",
+    "rot13"
+  ],
+  "evidence": [
+    "db schema     orders.card holds a payment token and the last 4 digits; full numbers never reach our servers",
+    "cdn           checkout.js changed 14 Mar 02:13 and grew by 3.1 KB; nobody on the team deployed that day",
+    "capture       on submit the page sends a second request to cdn-metrics.invalid/c with number, expiry and CVV",
+    "company       shop.example sells online only and has no physical stores"
+  ],
+  "hints": [
+    "Three layers. Run identify after every step.",
+    "Hex, then the 64-character alphabet, then a letter swap.",
+    "If full card numbers never reach the server and there are no stores, where else can they be copied?"
+  ],
+  "artifact": "card_skimmer.txt",
+  "answer_sha256": "17db47764a4ae03c6f20cfd6c144ff5df8479aa816ab4a0ce7390ec3f20b3b81"
+}

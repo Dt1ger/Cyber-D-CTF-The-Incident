@@ -1,0 +1,9 @@
+Carrier and exchange timeline for account owner R. Okafor (fictional)
+09:02 the owner's phone shows No Service.
+09:04 the carrier activates a new SIM for the owner's number at a store in another city.
+09:06 the exchange sends a password reset code by SMS. The owner never sees it.
+09:09 a sign-in from 198.51.100.23 uses the reset code, then withdraws the balance.
+Theories logged by support:
+FLAG{phone_malware}
+FLAG{password_reuse}
+FLAG{sim_swap}

@@ -1,0 +1,27 @@
+{
+  "id": "fake_login",
+  "title": "The login page one word off",
+  "difficulty": 3,
+  "clue": "Staff reported a sign-in page that was not the real portal. The operator scrambled their notes before uploading them. Submit the flag for how the accounts were actually taken.",
+  "layers": [
+    "base64",
+    {
+      "kind": "xor",
+      "key": "0x2f6b"
+    }
+  ],
+  "evidence": [
+    "proxy         10.20.7.31  GET https://portal-login.test/auth  (real portal: portal.example)",
+    "whois         portal-login.test registered 2 days before the first email",
+    "kit/config    theme=portal  drop=collect.invalid  enc_key=0x2f6b",
+    "kit/config    session_secret=9d1e7a  (signs cookies, not notes)",
+    "idp           19 sign-ins from 192.0.2.61 with a valid one-time code; 0 push prompts sent"
+  ],
+  "hints": [
+    "Two layers. The outer one uses a 64-character alphabet.",
+    "Under it is hex of keyed bytes, so a plain hex decode looks like noise. The kit's config has two secrets; only one is for notes.",
+    "What the lure claimed isn't the method, and push prompts were never sent."
+  ],
+  "artifact": "fake_login.txt",
+  "answer_sha256": "f2a2c6622810578436519c973f6c725b056d535700b5e47028e2c8cbd76f171a"
+}

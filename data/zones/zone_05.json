@@ -1,0 +1,192 @@
+{
+  "index": 5,
+  "id": "recon_maze",
+  "name": "The Recon Maze",
+  "phase": "Detection & Analysis",
+  "lesson": "Spotting discovery: bursts of built-in admin commands from the wrong host or account, and internal sweeps for reachable systems.",
+  "attack": ["T1087.002", "T1018"],
+  "accent": "#ff5ea8",
+  "window": ["2026-11-17T09:00:00Z", "2026-11-17T11:00:00Z"],
+  "clock": {"rate": 1.2, "start": 38, "reset": 78},
+  "map_seed": 505,
+  "pivot_tip": "Pivot on host and user together. 'net group' from IT-ADM-03 is a Tuesday. From a finance desk as an IT admin, it's a hunt.",
+  "reaction": "The sweep stopped and restarted from a different source port pattern. VELVET LOCUST is slowing down to blend in.",
+  "nodes": [
+    {"id": "ueba", "host": "UEBA-01", "label": "Behavior Analytics", "ip": "10.20.99.44", "role": "User behavior baselines", "evidence": ["e501"]},
+    {"id": "dc", "host": "DC-01", "label": "Domain Controller", "ip": "10.20.0.5", "role": "Active Directory", "evidence": ["e502"]},
+    {"id": "netflow", "host": "NETFLOW-01", "label": "Flow Collector", "ip": "10.20.99.45", "role": "Internal traffic records", "evidence": ["e503"]},
+    {"id": "itops", "host": "IT-ADM-03", "label": "IT Admin Desk", "ip": "10.20.2.33", "role": "Tom Brooks's admin workstation", "evidence": ["e504"]}
+  ],
+  "evidence": {
+    "e501": {
+      "title": "UEBA: t.brooks on an unusual host", "type": "ueba", "host": "UEBA-01", "time": "2026-11-17T09:52:30Z",
+      "lines": [
+        "ANOMALY  : Privileged account active on never-before-seen host   Risk: 92/100",
+        "Account  : HALCYON\\t.brooks (IT-Admins, Server Operators, Backup Operators)",
+        "Host     : WS-FIN-0142 (finance)     Usual hosts: IT-ADM-03, JUMP-02",
+        "Activity : 6 discovery commands in 4 minutes (baseline: 0 on this host)",
+        "Note     : Logon type 9 (NewCredentials) from updchk.exe context"
+      ],
+      "tip": "Logon type 9 means someone ran a program with alternate credentials. The stolen t.brooks password is being used."
+    },
+    "e502": {
+      "title": "DC LDAP query log", "type": "ldap", "host": "DC-01", "time": "2026-11-17T09:53:40Z",
+      "lines": [
+        "Expensive/inefficient LDAP queries (Event 1644) from 10.20.4.142 as t.brooks:",
+        "  09:53:12  (&(objectCategory=group)(cn=Domain Admins))        attrs: member",
+        "  09:53:18  (&(objectCategory=group)(cn=Backup Operators))     attrs: member",
+        "  09:53:31  (objectCategory=computer)                          returned 412 entries",
+        "  09:53:40  (&(objectCategory=user)(adminCount=1))             returned 9 entries",
+        "Baseline for 10.20.4.142: 0 such queries in 90 days"
+      ],
+      "tip": "Enumerating admin groups and every computer is how an adversary draws their map. You can hunt for the mapping itself."
+    },
+    "e503": {
+      "title": "Flow summary: 10.20.4.142 fan-out", "type": "netflow", "host": "NETFLOW-01", "time": "2026-11-17T09:58:00Z",
+      "lines": [
+        "Source 10.20.4.142  09:56:02-09:56:40  distinct destinations: 8  ports: 445",
+        "  10.20.0.5  10.20.1.10  10.20.1.30  10.20.2.20  10.20.9.50   (responded)",
+        "  10.20.4.139  10.20.4.150  10.20.6.217                       (blocked/no reply)",
+        "Workstations normally talk to 2-3 internal servers. This one probed 8 hosts in 38 s.",
+        "Responsive servers: DC-01, FS-CORE-01, BACKUP-01, JUMP-02, VAULT-DB-01"
+      ],
+      "tip": "Fan-out (one source to many destinations on the same port in seconds) is the fingerprint of a sweep."
+    },
+    "e504": {
+      "title": "IT change calendar (Nov 17)", "type": "record", "host": "IT-ADM-03", "time": "2026-11-17T07:30:00Z",
+      "lines": [
+        "08:45  t.brooks  Password reset for j.reyes (ticket #48201)  - uses 'net user /domain'",
+        "10:00  t.brooks  Patch audit (Get-PatchStatus.ps1) on IT-ADM-03",
+        "No scheduled work on any WS-FIN-* host today.",
+        "Tom Brooks status: in the 09:30-11:00 budget meeting (calendar), laptop closed."
+      ],
+      "tip": "Legitimate admin activity has context: a ticket, a source host, a time. Tom was in a meeting during the discovery burst."
+    }
+  },
+  "telemetry": {
+    "proc": {
+      "description": "Process creation (Sysmon Event 1)",
+      "columns": ["id", "time", "host", "user", "parent", "name", "cmdline"],
+      "noise": 44,
+      "rows": [
+        {"id": "p-500", "time": "2026-11-17T08:45:30Z", "host": "IT-ADM-03", "user": "t.brooks", "parent": "cmd.exe", "name": "net.exe", "cmdline": "net user j.reyes /domain", "pid": 4410, "ppid": 4400},
+        {"id": "p-501", "time": "2026-11-17T09:52:05Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "cmd.exe", "name": "whoami.exe", "cmdline": "whoami /groups", "pid": 7101, "ppid": 7100},
+        {"id": "p-502", "time": "2026-11-17T09:52:40Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "cmd.exe", "name": "net.exe", "cmdline": "net group \"Domain Admins\" /domain", "pid": 7110, "ppid": 7100},
+        {"id": "p-503", "time": "2026-11-17T09:53:02Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "cmd.exe", "name": "net.exe", "cmdline": "net group \"Backup Operators\" /domain", "pid": 7118, "ppid": 7100},
+        {"id": "p-504", "time": "2026-11-17T09:54:21Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "cmd.exe", "name": "nltest.exe", "cmdline": "nltest /dclist:corp.halcyon.example", "pid": 7126, "ppid": 7100},
+        {"id": "p-505", "time": "2026-11-17T09:55:10Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "cmd.exe", "name": "net.exe", "cmdline": "net view /domain:HALCYON", "pid": 7133, "ppid": 7100},
+        {"id": "p-506", "time": "2026-11-17T09:55:58Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "cmd.exe", "name": "powershell.exe", "cmdline": "powershell -c \"10.20.0.5,10.20.1.10,10.20.1.30,10.20.2.20,10.20.9.50,10.20.4.139,10.20.4.150,10.20.6.217 | % { Test-NetConnection $_ -Port 445 }\"   [inert log text]", "pid": 7140, "ppid": 7100},
+        {"id": "p-507", "time": "2026-11-17T09:51:58Z", "host": "WS-FIN-0142", "user": "t.brooks", "parent": "updchk.exe", "name": "cmd.exe", "cmdline": "cmd.exe", "pid": 7100, "ppid": 6012}
+      ]
+    },
+    "net": {
+      "description": "Network connections (Sysmon Event 3)",
+      "columns": ["id", "time", "host", "name", "src", "dst", "dport", "domain", "bytes_out"],
+      "noise": 36,
+      "rows": [
+        {"id": "n-501", "time": "2026-11-17T09:56:02Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.0.5", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 60},
+        {"id": "n-502", "time": "2026-11-17T09:56:07Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.1.10", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 60},
+        {"id": "n-503", "time": "2026-11-17T09:56:12Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.1.30", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 60},
+        {"id": "n-504", "time": "2026-11-17T09:56:17Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.2.20", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 60},
+        {"id": "n-505", "time": "2026-11-17T09:56:22Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.9.50", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 60},
+        {"id": "n-506", "time": "2026-11-17T09:56:28Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.4.139", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 0},
+        {"id": "n-507", "time": "2026-11-17T09:56:34Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.4.150", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 0},
+        {"id": "n-508", "time": "2026-11-17T09:56:40Z", "host": "WS-FIN-0142", "user": "t.brooks", "name": "powershell.exe", "src": "10.20.4.142", "dst": "10.20.6.217", "dport": 445, "proto": "tcp", "domain": "", "bytes_out": 60, "bytes_in": 0}
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "id": "o1", "type": "collect", "title": "Read the behavior alert",
+      "desc": "Investigate UEBA-01.",
+      "evidence": ["e501"],
+      "hints": ["The Behavior Analytics node.", "Press E at UEBA-01.", "Open 'UEBA: t.brooks on an unusual host'."]
+    },
+    {
+      "id": "o2", "type": "query", "title": "What did 't.brooks' run on the finance desk?",
+      "desc": "Hunt proc for everything the t.brooks account ran on WS-FIN-0142.",
+      "table": "proc", "required": ["p-501", "p-502", "p-503", "p-504", "p-505", "p-506"], "max_rows": 7,
+      "solution": "search proc where host=\"WS-FIN-0142\" and user=\"t.brooks\"",
+      "success": "whoami, net group, nltest, net view, a port sweep. Textbook discovery.",
+      "hints": ["Combine the host and the user.", "host=\"WS-FIN-0142\" and user=\"t.brooks\".", "search proc where host=\"WS-FIN-0142\" and user=\"t.brooks\""]
+    },
+    {
+      "id": "o3", "type": "query", "title": "Is this normal anywhere?",
+      "desc": "Find every net.exe and nltest.exe run in the zone, so you can compare hosts. Try '| count by host'.",
+      "table": "proc", "required": ["p-500", "p-502", "p-503", "p-504", "p-505"], "max_rows": 5,
+      "solution": "search proc where name in (\"net.exe\", \"nltest.exe\") | count by host",
+      "success": "IT-ADM-03 ran one, with a ticket. WS-FIN-0142 ran four in three minutes. Context is everything.",
+      "hints": ["The 'in' operator matches any value in a list.", "Add '| count by host' to compare sources.", "search proc where name in (\"net.exe\", \"nltest.exe\") | count by host"]
+    },
+    {
+      "id": "o4", "type": "query", "title": "Map the sweep",
+      "desc": "Find the connections from 10.20.4.142 to port 445.",
+      "table": "net", "required": ["n-501", "n-502", "n-503", "n-504", "n-505", "n-506", "n-507", "n-508"], "max_rows": 8,
+      "solution": "search net where src=\"10.20.4.142\" and dport=445",
+      "success": "Eight targets in 38 seconds. Five servers answered. Those are where they'll go next.",
+      "hints": ["SMB uses port 445.", "Filter on the source IP and the destination port.", "search net where src=\"10.20.4.142\" and dport=445"]
+    },
+    {
+      "id": "o5", "type": "collect", "title": "Corroborate",
+      "desc": "Collect the DC's LDAP log, the flow summary, and IT's change calendar.",
+      "evidence": ["e502", "e503", "e504"],
+      "hints": ["Three nodes: DC-01, NETFLOW-01, IT-ADM-03.", "Press E at each.", "Open the LDAP log, the flow summary, and the change calendar."]
+    },
+    {
+      "id": "o6", "type": "timeline", "title": "Rebuild the discovery sequence",
+      "desc": "Press L and order the adversary's steps.",
+      "events": [
+        {"id": "t1", "label": "cmd.exe launched under stolen t.brooks credentials (logon type 9)"},
+        {"id": "t2", "label": "whoami /groups: what can this account do?"},
+        {"id": "t3", "label": "net group \"Domain Admins\" / \"Backup Operators\": who matters?"},
+        {"id": "t4", "label": "nltest /dclist: where are the domain controllers?"},
+        {"id": "t5", "label": "net view: what systems exist?"},
+        {"id": "t6", "label": "Port 445 sweep: which systems are reachable?"}
+      ],
+      "success": "Who am I, who matters, where's the DC, what exists, what's reachable. Every intruder asks the same questions.",
+      "hints": ["Check the times on the proc rows.", "Identity first, then groups, then infrastructure, then reachability.", "cmd, whoami, net group, nltest, net view, sweep."]
+    },
+    {
+      "id": "o7", "type": "choice", "board": true, "title": "Form a hypothesis",
+      "desc": "Press B. Pin the proof and choose.",
+      "prompt": "What is happening in the Recon Maze?",
+      "pins": ["e501", "e504"],
+      "options": [
+        {"id": "a", "text": "Tom Brooks is doing routine admin work from Mira's desk", "feedback": "Tom was in a budget meeting, and nothing was scheduled on WS-FIN-* today."},
+        {"id": "b", "text": "Using stolen t.brooks credentials, the adversary enumerated domain admin groups and swept for reachable servers", "correct": true},
+        {"id": "c", "text": "A vulnerability scanner ran its weekly scan", "feedback": "Scanners run from known scanner hosts, not from updchk.exe on a finance desk."},
+        {"id": "d", "text": "The adversary already moved laterally to the servers", "feedback": "Not yet: these are probes (60 bytes) and lookups. Movement is the next step."}
+      ],
+      "success": "Confirmed: discovery with stolen credentials.",
+      "hints": ["Pin the UEBA alert and IT's calendar.", "Was Tom at his desk? Was any work scheduled?", "Pin e501 and e504, then choose the stolen-credentials discovery option."]
+    },
+    {
+      "id": "o8", "type": "map", "title": "Map it to ATT&CK",
+      "desc": "Press M and map both findings.",
+      "findings": ["f1", "f2"],
+      "hints": ["Both are about learning the environment.", "Discovery column: accounts and remote systems.", "f1 -> T1087.002 Domain Account; f2 -> T1018 Remote System Discovery."]
+    },
+    {
+      "id": "o9", "type": "respond", "title": "Respond",
+      "desc": "Press R. Prepare the ground for containment without showing your hand.",
+      "hints": ["They're about to move to the servers that answered.", "Turn up visibility on those servers and stop workstation-to-workstation SMB.", "Discovery alert, workstation SMB firewall, full logging on the five servers."]
+    }
+  ],
+  "findings": {
+    "f1": {"text": "net group / nltest / LDAP queries enumerated Domain Admins and Backup Operators", "technique": "T1087.002", "accept": ["T1087"], "tactics": ["TA0007"], "hint": "They listed accounts and groups in the domain.", "success": "T1087.002 lit: Account Discovery, Domain Account."},
+    "f2": {"text": "net view and a port-445 sweep found which servers were reachable", "technique": "T1018", "tactics": ["TA0007"], "hint": "They looked for other computers they could reach.", "success": "T1018 lit: Remote System Discovery."}
+  },
+  "responses": [
+    {"id": "r1", "label": "Alert on discovery-command bursts from non-IT hosts", "description": "3+ of net/nltest/whoami/net view within 10 minutes outside IT-ADM-*.", "tradeoff": "Tunable, high signal.", "outcome": "good", "required": true, "clears": ["ueba"], "feedback": "Detection live."},
+    {"id": "r2", "label": "Block SMB between workstations with the host firewall", "description": "Workstations may reach file servers, not each other.", "tradeoff": "Almost no business impact.", "outcome": "good", "required": true, "clears": ["netflow"], "feedback": "Workstation-to-workstation SMB blocked. Their sweep just got a lot smaller."},
+    {"id": "r3", "label": "Turn on full logging on the five servers that answered", "description": "Command-line, PowerShell, and logon auditing on DC-01, FS-CORE-01, BACKUP-01, JUMP-02, VAULT-DB-01.", "tradeoff": "More log volume. You'll see their next move.", "outcome": "good", "required": true, "clears": ["dc"], "feedback": "Full visibility on the likely targets. Now you'll see the bridges they cross."},
+    {"id": "r4", "label": "Plant a honeytoken admin account (adm_backup2)", "description": "A fake privileged account that should never be used.", "tradeoff": "Cheap early warning.", "outcome": "good", "feedback": "Honeytoken planted. Any use of it is a guaranteed alarm."},
+    {"id": "r5", "label": "Block net.exe on all computers", "description": "Prevent anyone from running net.exe.", "tradeoff": "Breaks IT and logon scripts; attackers use PowerShell or LDAP instead.", "outcome": "bad", "clock": 3, "feedback": "Logon scripts failed company-wide and the adversary already has its map. Detect the behavior instead."},
+    {"id": "r6", "label": "Isolate WS-FIN-0142 now", "description": "Cut Mira's workstation off immediately.", "tradeoff": "They have valid credentials and know where the servers are.", "outcome": "premature", "clock": 6, "feedback": "They noticed and switched to working directly with t.brooks's credentials. Find where they're going before you close doors."}
+  ],
+  "puzzle": {"title": "CTF Cache: Recon Maze", "encoding": "rot13", "answer": "FLAG{whoami_is_the_first_question}", "points": 25, "clue": "Caesar's favorite shift is 13. Try: decode rot13 cache"},
+  "dialogue": {
+    "intro": ["z5_intro_o", "z5_intro_p"],
+    "outro": ["z5_outro_p", "z5_outro_o"]
+  }
+}

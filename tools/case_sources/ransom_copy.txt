@@ -1,0 +1,9 @@
+FS-01 RECOVERY NOTICE
+Your share \\FS-01\finance is locked and every file now ends in .lck.
+Before the lock ran, we copied 41 GB of it out to our own server.
+Paying buys you a key. Not paying puts the copy on drop.invalid for anyone to read.
+Restoring from backup does not change what we hold.
+Pick the tag that fits when you write to us:
+FLAG{encryption_only}
+FLAG{double_extortion}
+FLAG{data_destroyed}

@@ -1,0 +1,169 @@
+{
+  "index": 1,
+  "id": "inbox_gate",
+  "name": "The Inbox Gate",
+  "phase": "Detection & Analysis",
+  "lesson": "Phishing analysis: email headers, SPF/DKIM/DMARC, sender infrastructure, and scoping who received the lure.",
+  "attack": ["T1566.001"],
+  "accent": "#00d8ff",
+  "window": ["2026-11-17T07:30:00Z", "2026-11-17T10:00:00Z"],
+  "clock": {"rate": 1.0, "start": 6, "reset": 70},
+  "map_seed": 101,
+  "pivot_tip": "The From line can be faked. Pivot on sender_ip: it's the infrastructure that actually connected.",
+  "reaction": "Mail logs show a second wave from 198.51.100.23. VELVET LOCUST noticed the SOC stirring.",
+  "nodes": [
+    {"id": "mailgw", "host": "MAIL-GW-01", "label": "Mail Gateway", "ip": "10.20.0.25", "role": "Inbound mail filtering", "evidence": ["e101"]},
+    {"id": "helpdesk", "host": "HELPDESK-Q", "label": "Helpdesk Queue", "ip": "10.20.0.60", "role": "User support tickets", "evidence": ["e102"]},
+    {"id": "sandbox", "host": "SANDBOX-03", "label": "Detonation Sandbox", "ip": "10.20.99.30", "role": "Isolated attachment analysis", "evidence": ["e103"]},
+    {"id": "vendor", "host": "VENDOR-DB", "label": "Vendor Master", "ip": "10.20.0.71", "role": "Accounts Payable vendor records", "evidence": ["e104"]}
+  ],
+  "evidence": {
+    "e101": {
+      "title": "Headers: 'Overdue invoice Q3-8841'", "type": "email_header", "host": "MAIL-GW-01", "time": "2026-11-17T08:52:10Z",
+      "lines": [
+        "Return-Path: <bounce-7731@mailer.nw-billing.test>",
+        "Received: from mx01.halcyon.example (10.20.0.25) by MAIL-GW-01;",
+        "          Tue, 17 Nov 2026 08:52:14 +0000",
+        "Received: from smtp-out.nw-billing.test (unknown [198.51.100.23])",
+        "          by mx01.halcyon.example; Tue, 17 Nov 2026 08:52:10 +0000",
+        "Authentication-Results: mx01.halcyon.example;",
+        "    spf=fail (198.51.100.23 is not permitted to send for mailer.nw-billing.test)",
+        "    dkim=none (message not signed)",
+        "    dmarc=fail (p=quarantine) header.from=northwind-billing.example",
+        "From: \"Northwind Billing\" <billing@northwind-billing.example>",
+        "Reply-To: <payments@nw-billing.test>",
+        "To: Mira Okafor <m.okafor@halcyon.example>",
+        "Subject: URGENT: Overdue invoice Q3-8841 - payment hold",
+        "X-Mailer: BulkSend 2.3",
+        "Attachment: Invoice_Q3_8841.docm (application/vnd.ms-word.document.macroEnabled.12, 48 KB)"
+      ],
+      "tip": "Read Received headers bottom-up: the lowest one is closest to the true sender. From, Reply-To, and Return-Path all point to different domains, and authentication failed."
+    },
+    "e102": {
+      "title": "Ticket #48213: 'invoice won't open'", "type": "ticket", "host": "HELPDESK-Q", "time": "2026-11-17T09:20:41Z",
+      "lines": [
+        "Ticket   : #48213   Priority: Low   Status: New",
+        "Reporter : Mira Okafor (Finance, WS-FIN-0142)",
+        "Opened   : 2026-11-17 09:20:41 UTC",
+        "",
+        "\"Got an overdue invoice from Northwind. The document said 'This file is",
+        " protected, click Enable Content to view'. I clicked it but the page stayed",
+        " blank. Can someone check? They say payment is on hold.\"",
+        "",
+        "Auto-tag: none"
+      ],
+      "tip": "Users are sensors. 'Enable Content' plus 'nothing happened' is a classic sign a macro ran."
+    },
+    "e103": {
+      "title": "Sandbox report: Invoice_Q3_8841.docm", "type": "sandbox", "host": "SANDBOX-03", "time": "2026-11-17T09:31:02Z",
+      "lines": [
+        "File      : Invoice_Q3_8841.docm (48,128 bytes)",
+        "SHA-256   : 7f3c9a1e5b2d4c6f8a0e1d3b5c7f9a2e4d6b8c0f1a3e5d7b9c2f4a6e8d0b1c3f",
+        "Type      : Word macro-enabled document",
+        "Macros    : YES  - AutoOpen() -> Shell(\"powershell.exe -NoP -W Hidden -Enc ...\")",
+        "Lure text : 'This document is protected. Click Enable Content to view.'",
+        "Behavior  : WINWORD.EXE spawned powershell.exe (hidden window)",
+        "Network   : HTTPS to cdn.halcyon-support.test (203.0.113.66)",
+        "Verdict   : MALICIOUS (downloader)"
+      ],
+      "tip": "Look-alike domains like halcyon-support.test borrow your company's name to look trusted."
+    },
+    "e104": {
+      "title": "Vendor record: Northwind Billing", "type": "record", "host": "VENDOR-DB", "time": "2026-11-17T09:35:00Z",
+      "lines": [
+        "Vendor        : Northwind Billing (fictional)",
+        "AP contact    : ar@northwind-billing.example",
+        "Mail servers  : mail.northwind-billing.example (192.0.2.40)",
+        "SPF / DMARC   : published, p=quarantine",
+        "Invoice format: PDF only. Never sends Office documents with macros.",
+        "Open invoices : none overdue"
+      ],
+      "tip": "Know what normal looks like: the real vendor sends PDFs from 192.0.2.40 and passes authentication."
+    }
+  },
+  "telemetry": {
+    "email": {
+      "description": "Inbound mail log from MAIL-GW-01",
+      "columns": ["id", "time", "from", "recipient", "subject", "attachment", "sender_ip", "spf", "action"],
+      "noise": 28,
+      "rows": [
+        {"id": "m-0", "time": "2026-11-12T15:02:11Z", "host": "MAIL-GW-01", "from": "ar@northwind-billing.example", "reply_to": "", "return_path": "ar@northwind-billing.example", "recipient": "ap@halcyon.example", "subject": "Statement for October", "attachment": "Statement_Oct.pdf", "sender_ip": "192.0.2.40", "spf": "pass", "dkim": "pass", "dmarc": "pass", "action": "delivered"},
+        {"id": "m-1", "time": "2026-11-17T08:52:10Z", "host": "MAIL-GW-01", "from": "billing@northwind-billing.example", "reply_to": "payments@nw-billing.test", "return_path": "bounce-7731@mailer.nw-billing.test", "recipient": "m.okafor@halcyon.example", "subject": "URGENT: Overdue invoice Q3-8841 - payment hold", "attachment": "Invoice_Q3_8841.docm", "sender_ip": "198.51.100.23", "spf": "fail", "dkim": "none", "dmarc": "fail", "action": "delivered"},
+        {"id": "m-2", "time": "2026-11-17T08:52:19Z", "host": "MAIL-GW-01", "from": "billing@northwind-billing.example", "reply_to": "payments@nw-billing.test", "return_path": "bounce-7732@mailer.nw-billing.test", "recipient": "j.reyes@halcyon.example", "subject": "URGENT: Overdue invoice Q3-8841 - payment hold", "attachment": "Invoice_Q3_8841.docm", "sender_ip": "198.51.100.23", "spf": "fail", "dkim": "none", "dmarc": "fail", "action": "quarantined"},
+        {"id": "m-3", "time": "2026-11-17T08:52:27Z", "host": "MAIL-GW-01", "from": "billing@northwind-billing.example", "reply_to": "payments@nw-billing.test", "return_path": "bounce-7733@mailer.nw-billing.test", "recipient": "a.chen@halcyon.example", "subject": "URGENT: Overdue invoice Q3-8841 - payment hold", "attachment": "Invoice_Q3_8841.docm", "sender_ip": "198.51.100.23", "spf": "fail", "dkim": "none", "dmarc": "fail", "action": "delivered"}
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "id": "o1", "type": "collect", "title": "Pull the suspicious message",
+      "desc": "Investigate MAIL-GW-01 (headers) and HELPDESK-Q (Mira's ticket).",
+      "evidence": ["e101", "e102"],
+      "hints": ["Two nodes hold what you need: the mail gateway and the helpdesk queue.", "Stand next to MAIL-GW-01 and HELPDESK-Q and press E on each.", "Open 'Headers: Overdue invoice Q3-8841' and 'Ticket #48213'."]
+    },
+    {
+      "id": "o2", "type": "query", "title": "Find every copy of the lure",
+      "desc": "Hunt the email table for all messages from the attacker's sending infrastructure (3 rows).",
+      "table": "email", "required": ["m-1", "m-2", "m-3"], "max_rows": 3,
+      "solution": "search email where sender_ip=\"198.51.100.23\"",
+      "success": "Three copies, one sender IP. That's your scope.",
+      "hints": ["Searching by the From address also returns the REAL vendor's mail. What can't the attacker fake?", "The headers show which IP actually connected: 198.51.100.23.", "search email where sender_ip=\"198.51.100.23\""]
+    },
+    {
+      "id": "o3", "type": "query", "title": "Who actually received it?",
+      "desc": "Narrow it down to the copies that were delivered, not quarantined (2 rows).",
+      "table": "email", "required": ["m-1", "m-3"], "max_rows": 2,
+      "solution": "search email where sender_ip=\"198.51.100.23\" and action=\"delivered\"",
+      "success": "Mira and a.chen got it. j.reyes was protected by quarantine.",
+      "dialogue": ["z1_o3_p"],
+      "hints": ["The 'action' field says what the gateway did with each message.", "Add a second condition with 'and'.", "search email where sender_ip=\"198.51.100.23\" and action=\"delivered\""]
+    },
+    {
+      "id": "o4", "type": "collect", "title": "Check the attachment and the vendor",
+      "desc": "Read the sandbox report on SANDBOX-03 and the vendor record on VENDOR-DB.",
+      "evidence": ["e103", "e104"],
+      "hints": ["Two more nodes: the detonation sandbox and the vendor master.", "Press E at SANDBOX-03 and VENDOR-DB.", "Open the sandbox report and 'Vendor record: Northwind Billing'."]
+    },
+    {
+      "id": "o5", "type": "choice", "board": true, "title": "Form a hypothesis",
+      "desc": "Press B. Pin the evidence that proves it, then choose what happened.",
+      "prompt": "What happened at the Inbox Gate?",
+      "pins": ["e101", "e103"],
+      "options": [
+        {"id": "a", "text": "Spearphishing link: Mira clicked a link to a fake login page", "feedback": "There's no link in this message. Check the attachment line in the headers."},
+        {"id": "b", "text": "Spearphishing attachment: a spoofed 'Northwind Billing' email delivered a macro-enabled document", "correct": true},
+        {"id": "c", "text": "False positive: a real overdue invoice from a trusted vendor", "feedback": "The vendor record says PDFs only from 192.0.2.40, and authentication failed."},
+        {"id": "d", "text": "Drive-by compromise: Mira visited an infected website", "feedback": "Everything here arrived by email. Start where the evidence starts."}
+      ],
+      "success": "Hypothesis confirmed: spearphishing with a weaponized attachment.",
+      "hints": ["Pin the headers and the sandbox report: together they show how it arrived and what it carried.", "Is there a link or an attachment in the headers?", "Pin e101 and e103, then choose the spearphishing attachment option."]
+    },
+    {
+      "id": "o6", "type": "map", "title": "Map it to ATT&CK",
+      "desc": "Press M. Select the finding, then the matching technique cell, and press Enter.",
+      "findings": ["f1"],
+      "hints": ["How did the adversary get in? That's the tactic column.", "Initial Access, Phishing.", "Initial Access > T1566.001 Phishing: Spearphishing Attachment."]
+    },
+    {
+      "id": "o7", "type": "respond", "title": "Respond",
+      "desc": "Press R. Take the response actions that contain the phishing wave, in a sensible order.",
+      "hints": ["Remove the lure, stop more of it, and protect the people who got it.", "Avoid actions that engage the attacker or hurt the business.", "Purge the email, block 198.51.100.23 and nw-billing.test, and warn the recipients."]
+    }
+  ],
+  "findings": {
+    "f1": {"text": "Spoofed 'Northwind Billing' email delivered a macro-enabled .docm attachment", "technique": "T1566.001", "tactics": ["TA0001"], "hint": "The finding describes how they got in, and it arrived as a file attached to an email.", "success": "T1566.001 lit. Initial Access confirmed."}
+  },
+  "responses": [
+    {"id": "r1", "label": "Purge the lure from every mailbox", "description": "Search-and-destroy all copies of 'Overdue invoice Q3-8841' across Halcyon mailboxes.", "tradeoff": "Low risk. Keep a copy in the evidence store first (the gateway already did).", "outcome": "good", "required": true, "clears": ["mailgw"], "feedback": "Copies purged from three mailboxes. Evidence copy retained."},
+    {"id": "r2", "label": "Block 198.51.100.23 and nw-billing.test at the gateway", "description": "Add the sending IP and the attacker's domains to the gateway blocklist.", "tradeoff": "Low risk. Remember: IPs and domains are cheap for them to change.", "outcome": "good", "required": true, "feedback": "Blocked. Expect a new IP eventually, but this wave is done."},
+    {"id": "r3", "label": "Warn Mira and a.chen and ask a.chen not to open it", "description": "Contact both recipients directly and confirm whether a.chen opened the file.", "tradeoff": "Low risk. a.chen confirms she never opened it.", "outcome": "good", "required": true, "feedback": "a.chen never opened it. Mira did. WS-FIN-0142 is now your focus."},
+    {"id": "r4", "label": "Isolate WS-FIN-0142 right now", "description": "Cut Mira's workstation off the network immediately.", "tradeoff": "You haven't confirmed what ran or where else they are.", "outcome": "premature", "clock": 6, "feedback": "Too early. You haven't scoped what ran or what else they touched. Pulling one host now tells VELVET LOCUST you're onto them while they may hold footholds you haven't found."},
+    {"id": "r5", "label": "Reply to the sender asking them to verify the invoice", "description": "Email payments@nw-billing.test from Mira's mailbox.", "tradeoff": "Engages the adversary directly.", "outcome": "bad", "clock": 3, "feedback": "Never engage the adversary from a corporate mailbox. You just confirmed the address is read by a live target."},
+    {"id": "r6", "label": "Block the vendor domain northwind-billing.example", "description": "Reject all mail from the Northwind Billing domain.", "tradeoff": "Hits the real vendor, whose name was spoofed.", "outcome": "bad", "clock": 2, "feedback": "That's the real vendor's domain; the attacker only spoofed it. You broke Accounts Payable and the attacker sends from 198.51.100.23 anyway."}
+  ],
+  "puzzle": {"title": "CTF Cache: Inbox Gate", "encoding": "base64", "answer": "FLAG{spf_fail_dmarc_fail}", "points": 25, "clue": "Base64 is the duct tape of the internet. In the terminal: decode base64 cache"},
+  "dialogue": {
+    "intro": ["z1_intro_o", "z1_intro_p", "z1_intro_o2"],
+    "outro": ["z1_outro_p", "z1_outro_o"]
+  }
+}

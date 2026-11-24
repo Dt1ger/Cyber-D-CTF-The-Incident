@@ -1,0 +1,23 @@
+{
+  "id": "ransom_copy",
+  "title": "Locked share, copy already gone",
+  "difficulty": 2,
+  "clue": "File server FS-01 locked its finance share overnight. Leadership wants to restore from backup and ignore the note. Submit the flag that explains why a clean restore would not end this.",
+  "layers": [
+    "base64",
+    "rot13"
+  ],
+  "evidence": [
+    "fs-01 audit   03:58  4,212 files renamed to *.lck in \\\\FS-01\\finance",
+    "fw-edge       02:10-03:55  10.20.4.20 -> 203.0.113.77:443  bytes_out 44,040,192,000",
+    "backup        the 01:00 snapshot of FS-01 is intact and verified",
+    "dlp           no alerts; the upload was HTTPS to an unclassified host"
+  ],
+  "hints": [
+    "Start with identify. The artifact's alphabet names the outer layer.",
+    "Two layers. After the first, the words keep their shape and punctuation but aren't English.",
+    "The backup is fine, so the lock alone isn't the threat. Compare when the upload ended with when the files were renamed."
+  ],
+  "artifact": "ransom_copy.txt",
+  "answer_sha256": "58065f83a2e22074a7a3f2d6dd2399092060cbba88334a3736380011de8795a0"
+}

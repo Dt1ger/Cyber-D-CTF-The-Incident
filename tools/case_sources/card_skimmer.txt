@@ -1,0 +1,10 @@
+Incident summary: card fraud linked to shop.example
+Customers report fraud on cards used only at shop.example since 14 March.
+The fraud team sent three theories to the bank and asked the response team to pick one.
+Theory one: card numbers were pulled from the order database.
+Theory two: card numbers were copied in the shopper's browser as they typed.
+Theory three: a store payment terminal was infected.
+Tags for the bank, in the same order:
+FLAG{database_breach}
+FLAG{web_skimmer}
+FLAG{point_of_sale_malware}

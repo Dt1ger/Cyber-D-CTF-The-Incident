@@ -1,0 +1,88 @@
+{
+  "_comment": "Shared lines. speaker: oracle | narrator | player | system. Character files override any key.",
+  "cinematic": [
+    "HALCYON DYNAMICS. 03:12 UTC. Engineering, finance, and seven years of ledgers, all humming quietly inside the Grid.",
+    "Most people see a corporate network. Hunters see a city of light: hosts like towers, traffic like rivers, every process a heartbeat.",
+    "At 08:52 an invoice arrived for a finance analyst named Mira Okafor. Overdue. Urgent. Payment on hold.",
+    "She clicked Enable Content. Nothing seemed to happen.",
+    "Something did.",
+    "VELVET LOCUST: a crew that steals data first and asks for ransom second. They're patient until they have credentials. Then they're fast.",
+    "Somewhere inside the Grid, a breach clock has started ticking toward the vault where Halcyon keeps its crown jewels.",
+    "The SOC lead, a voice everyone just calls Oracle, has one hunter on call tonight.",
+    "You."
+  ],
+  "oracle_idle": [
+    "Hypothesis first. Then the query that could prove you wrong.",
+    "Filter, then pivot. Every answer is the next question's input.",
+    "If you're stuck, press H. Asking costs a little. Guessing costs more.",
+    "Contain smart. Ask yourself what they'll do the second they notice you.",
+    "Behavior beats indicators. Climb the pyramid."
+  ],
+  "lines": {
+    "z0_intro_1": {"speaker": "oracle", "text": "Welcome to the Briefing Room. I'm Oracle. I run the SOC, and tonight I run you."},
+    "z0_intro_2": {"speaker": "oracle", "text": "Before we go hunting, you learn the tools. Move with WASD or the arrows, or click where you want to go. Press E next to anything glowing."},
+    "z0_intro_p": {"speaker": "player", "text": "Ready when you are."},
+    "z0_intro_3": {"speaker": "oracle", "text": "Come talk to me first. Objectives sit top-left. If you ever get stuck, press H for a hint."},
+    "z0_talk_1": {"speaker": "oracle", "text": "Threat hunting isn't waiting for alarms. It's assuming they're already inside and proving where."},
+    "z0_talk_2": {"speaker": "oracle", "text": "Study the training rig, open your journal, run your first query, then read the intel wall. The gate opens when you're done."},
+    "z0_outro_o": {"speaker": "oracle", "text": "Good. An alert just fired at the mail gateway: invoice-themed phishing. That's VELVET LOCUST's calling card. Go."},
+    "z0_outro_p": {"speaker": "player", "text": "On my way to the Inbox Gate."},
+
+    "z1_intro_o": {"speaker": "oracle", "text": "The Inbox Gate. A finance analyst opened an 'overdue invoice' this morning. Headers first. Headers don't lie, but From lines do."},
+    "z1_intro_p": {"speaker": "player", "text": "Let's see who really sent it."},
+    "z1_intro_o2": {"speaker": "oracle", "text": "Find every copy, find who received it, and check what the attachment does before you touch anyone's machine."},
+    "z1_o3_p": {"speaker": "player", "text": "Two delivered, one quarantined. Mira opened hers."},
+    "z1_outro_p": {"speaker": "player", "text": "Phish contained. But Mira enabled content, so something ran on WS-FIN-0142."},
+    "z1_outro_o": {"speaker": "oracle", "text": "Then we follow it. The Execution Fields are next: process trees."},
+
+    "z2_intro_o": {"speaker": "oracle", "text": "EDR flagged Mira's workstation. Office spawned a shell. Read the tree: who launched whom?"},
+    "z2_intro_p": {"speaker": "player", "text": "Parent, child, command line. Let's go."},
+    "z2_o2_p": {"speaker": "player", "text": "Word launching PowerShell. That's not how invoices work."},
+    "z2_outro_p": {"speaker": "player", "text": "updchk.exe is the second stage. It's calling stat-sync.example."},
+    "z2_outro_o": {"speaker": "oracle", "text": "Malware that wants to live survives reboots. Climb the Clockwork Tower and find how."},
+
+    "z3_intro_o": {"speaker": "oracle", "text": "Persistence. Scheduled tasks, Run keys, services: anything that relaunches it at logon. Compare against the baseline."},
+    "z3_intro_p": {"speaker": "player", "text": "Find what doesn't belong."},
+    "z3_upgrade": {"speaker": "system", "text": "GEAR UPGRADE: field kit level 10 issued."},
+    "z3_outro_p": {"speaker": "player", "text": "Two persistence paths, both removed. And Mira was a local admin. That's how it got SYSTEM."},
+    "z3_outro_o": {"speaker": "oracle", "text": "SYSTEM on a workstation means they could read memory. Get to the Shadow Archives. Check LSASS."},
+
+    "z4_intro_o": {"speaker": "oracle", "text": "LSASS holds the keys to the kingdom: password hashes, tickets. Find out who opened it, and how."},
+    "z4_intro_p": {"speaker": "player", "text": "Access rights tell the story. Let's read them."},
+    "z4_o6_p": {"speaker": "player", "text": "t.brooks. An IT admin's credentials were sitting in that memory."},
+    "z4_outro_p": {"speaker": "player", "text": "Credentials reset, LSA Protection on. But they had a head start with t.brooks."},
+    "z4_outro_o": {"speaker": "oracle", "text": "Then they've used it to look around. The Recon Maze. Find their map before they use it."},
+
+    "z5_intro_o": {"speaker": "oracle", "text": "Admins run 'net group' every day. The question is never 'what ran' but 'who, from where, and why'."},
+    "z5_intro_p": {"speaker": "player", "text": "Context is the signal. Got it."},
+    "z5_outro_p": {"speaker": "player", "text": "Five servers answered their sweep. Those are the next stops."},
+    "z5_outro_o": {"speaker": "oracle", "text": "Then they're crossing over now. Follow them across the Bridges."},
+
+    "z6_intro_o": {"speaker": "oracle", "text": "Lateral movement. Follow the logons hop by hop, and remember: contain them all at once, or they'll hop again."},
+    "z6_intro_p": {"speaker": "player", "text": "Map every bridge, then burn them together."},
+    "z6_upgrade": {"speaker": "system", "text": "GEAR UPGRADE: field kit level 20 issued."},
+    "z6_o6_p": {"speaker": "player", "text": "Jump server to the vault. They're at the door."},
+    "z6_outro_p": {"speaker": "player", "text": "Footholds cut. But the vault still has svchelper, and it's still talking."},
+    "z6_outro_o": {"speaker": "oracle", "text": "Climb the Beacon Spire. Find every channel it uses, then cut them in one move."},
+
+    "z7_intro_o": {"speaker": "oracle", "text": "Implants phone home. Look for rhythm: same interval, same size, from places that never browse."},
+    "z7_intro_p": {"speaker": "player", "text": "Listening for the heartbeat."},
+    "z7_o6_p": {"speaker": "player", "text": "ledger_q3.7z. They're packing the crown jewels."},
+    "z7_outro_p": {"speaker": "player", "text": "All channels dead. But how much left before we cut them?"},
+    "z7_outro_o": {"speaker": "oracle", "text": "This is it. The Core Vault. Scope the theft, stop what's armed, and close it out in the right order."},
+
+    "z8_intro_seer": {"speaker": "seer", "frame": 8, "text": "The ledger is already leaving. You are late, Oracle."},
+    "z8_intro_o": {"speaker": "oracle", "text": "The vault. They staged the ledger and armed something on BACKUP-01. The clock is real now. Everything you've learned, all at once."},
+    "z8_intro_p": {"speaker": "player", "text": "Preserve, contain, eradicate, recover. Let's finish it."},
+    "z8_o4_p": {"speaker": "player", "text": "Ransomware, armed for 13:00. Next to the backups."},
+    "z8_flag_p": {"speaker": "player", "text": "Flag captured. The vault is sealed."},
+    "z8_outro_o": {"speaker": "oracle", "text": "VELVET LOCUST is out of the Grid. Come to the Debrief. We write it all down so it never happens the same way twice."},
+
+    "hint_open": {"speaker": "oracle", "text": "Here's a nudge."},
+    "seer_tipoff": {"speaker": "seer", "frame": 8, "text": "I see the hand you're playing. Rush me, and I move first."},
+    "seer_dataloss": {"speaker": "seer", "frame": 10, "text": "That record is mine now. You were a step behind."},
+    "tipoff": {"speaker": "oracle", "text": "They noticed. Slow down and think about order."},
+    "dataloss": {"speaker": "oracle", "text": "We lost data. Breathe. Keep going. The job isn't over."},
+    "zone_complete": {"speaker": "oracle", "text": "Zone secured. The gate is open when you're ready."}
+  }
+}

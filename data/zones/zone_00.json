@@ -1,0 +1,140 @@
+{
+  "index": 0,
+  "id": "briefing_room",
+  "name": "The Briefing Room",
+  "phase": "Preparation",
+  "lesson": "Controls, the hypothesis-driven hunt loop, and the Pyramid of Pain.",
+  "attack": [],
+  "accent": "#00f0ff",
+  "window": ["2026-11-17T08:00:00Z", "2026-11-17T08:30:00Z"],
+  "clock": {"rate": 0, "start": 0},
+  "map_seed": 11,
+  "pivot_tip": "Start broad on the 'name' field, then narrow with 'host' or 'parent'.",
+  "nodes": [
+    {"id": "train", "host": "TRAIN-01", "label": "Training Rig", "ip": "10.20.99.10", "role": "SOC training workstation", "evidence": ["e001", "e002"]},
+    {"id": "wall", "host": "INTEL-WALL", "label": "Threat Intel Wall", "ip": "10.20.99.11", "role": "Shared threat intelligence board", "evidence": ["e003"]}
+  ],
+  "evidence": {
+    "e001": {
+      "title": "The Hunt Loop", "type": "note", "host": "TRAIN-01", "time": "2026-11-17T08:05:00Z",
+      "lines": [
+        "THREAT HUNTING IS A LOOP, NOT A CHECKLIST",
+        "",
+        "1. HYPOTHESIZE   Start from a testable idea: 'An adversary is using PowerShell",
+        "                 launched by Office documents on finance workstations.'",
+        "2. HUNT          Query telemetry to prove or disprove it. Filter, then pivot on",
+        "                 what you find (host, user, parent process, domain, hash).",
+        "3. INVESTIGATE   Collect evidence, build a timeline, map behavior to ATT&CK.",
+        "4. RESPOND       Contain and eradicate in the right ORDER. Too early tips off",
+        "                 the adversary; too late lets them spread.",
+        "5. IMPROVE       Turn every finding into a detection so it never surprises you again.",
+        "",
+        "Incident response follows NIST SP 800-61: Preparation -> Detection & Analysis ->",
+        "Containment, Eradication & Recovery -> Post-Incident Activity."
+      ],
+      "tip": "A good hypothesis is specific enough that a query can prove it wrong."
+    },
+    "e002": {
+      "title": "The Pyramid of Pain", "type": "note", "host": "TRAIN-01", "time": "2026-11-17T08:06:00Z",
+      "lines": [
+        "            /\\        TTPs (tactics, techniques, procedures)   TOUGH!",
+        "           /  \\       Tools                                    Challenging",
+        "          /    \\      Network / host artifacts                 Annoying",
+        "         /      \\     Domain names                             Simple",
+        "        /        \\    IP addresses                             Easy",
+        "       /__________\\   Hash values                              Trivial",
+        "",
+        "The higher you detect, the more it costs the adversary to change.",
+        "A new hash takes seconds. A new IP takes minutes. A new domain, an hour.",
+        "But changing HOW they operate (their TTPs) means retooling and retraining.",
+        "Hunt for behavior, not just indicators."
+      ],
+      "tip": "Blocking a hash is easy for you and trivial for them to dodge. Detecting a behavior hurts."
+    },
+    "e003": {
+      "title": "Intel: VELVET LOCUST profile", "type": "intel", "host": "INTEL-WALL", "time": "2026-11-17T08:10:00Z",
+      "lines": [
+        "ADVERSARY PROFILE: VELVET LOCUST (fictional)",
+        "Motivation : Data theft and extortion against engineering firms",
+        "Known TTPs : Invoice-themed phishing with macro documents,",
+        "             encoded PowerShell, scheduled-task persistence,",
+        "             LSASS credential theft, SMB lateral movement,",
+        "             HTTPS beaconing with DNS fallback, double extortion",
+        "             (steal data first, then threaten encryption).",
+        "Dwell time : Hours to days. Moves fast once it has credentials.",
+        "",
+        "Halcyon Dynamics crown jewels: the finance ledger on VAULT-DB-01."
+      ],
+      "tip": "Intel tells you what to hunt for. Telemetry tells you whether it happened here."
+    }
+  },
+  "telemetry": {
+    "proc": {
+      "description": "Process creation events (Sysmon Event 1) on TRAIN-01",
+      "columns": ["id", "time", "host", "user", "parent", "name", "cmdline"],
+      "noise": 0,
+      "rows": [
+        {"id": "t-01", "time": "2026-11-17T08:01:10Z", "host": "TRAIN-01", "user": "trainee", "parent": "services.exe", "name": "svchost.exe", "cmdline": "C:\\Windows\\system32\\svchost.exe -k netsvcs", "pid": 912, "ppid": 640},
+        {"id": "t-02", "time": "2026-11-17T08:02:44Z", "host": "TRAIN-01", "user": "trainee", "parent": "explorer.exe", "name": "msedge.exe", "cmdline": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\"", "pid": 4410, "ppid": 3020},
+        {"id": "t-03", "time": "2026-11-17T08:03:15Z", "host": "TRAIN-01", "user": "trainee", "parent": "explorer.exe", "name": "notepad.exe", "cmdline": "notepad.exe C:\\Training\\welcome.txt", "pid": 5120, "ppid": 3020},
+        {"id": "t-04", "time": "2026-11-17T08:04:02Z", "host": "TRAIN-01", "user": "trainee", "parent": "explorer.exe", "name": "outlook.exe", "cmdline": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE\"", "pid": 5388, "ppid": 3020},
+        {"id": "t-05", "time": "2026-11-17T08:05:30Z", "host": "TRAIN-01", "user": "trainee", "parent": "svchost.exe", "name": "taskhostw.exe", "cmdline": "taskhostw.exe", "pid": 6002, "ppid": 912},
+        {"id": "t-06", "time": "2026-11-17T08:06:12Z", "host": "TRAIN-01", "user": "trainee", "parent": "explorer.exe", "name": "excel.exe", "cmdline": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE\"", "pid": 6140, "ppid": 3020}
+      ]
+    }
+  },
+  "objectives": [
+    {
+      "id": "o1", "type": "talk", "title": "Check in with Oracle",
+      "desc": "Walk up to Oracle and press E.",
+      "hints": ["Oracle is the glowing hologram near where you started.", "Walk next to Oracle until the [E] prompt appears.", "Stand next to Oracle and press E (or click Oracle)."]
+    },
+    {
+      "id": "o2", "type": "collect", "title": "Study the training rig",
+      "desc": "Investigate TRAIN-01 and read both artifacts on it.",
+      "evidence": ["e001", "e002"],
+      "hints": ["Nodes glow until you investigate them. Look for TRAIN-01.", "Stand next to TRAIN-01, press E, and open each artifact.", "Open both 'The Hunt Loop' and 'The Pyramid of Pain'."]
+    },
+    {
+      "id": "o3", "type": "open", "panel": "journal", "title": "Open your Evidence Journal",
+      "desc": "Press J. Everything you collect is saved there with timestamps.",
+      "hints": ["The journal key is J.", "You can also click JOURNAL on the toolbar at the bottom.", "Press J now."]
+    },
+    {
+      "id": "o4", "type": "query", "title": "Run your first hunt",
+      "desc": "Press T to open the Hunt Terminal and type: search proc where name=\"notepad.exe\"",
+      "table": "proc", "required": ["t-03"], "max_rows": 1,
+      "solution": "search proc where name=\"notepad.exe\"",
+      "success": "One row, exactly what you asked for. That's filtering.",
+      "hints": ["Press T, type the query exactly as shown, and press Enter.", "Quotes matter: name=\"notepad.exe\".", "search proc where name=\"notepad.exe\""]
+    },
+    {
+      "id": "o5", "type": "choice", "title": "The Pyramid of Pain",
+      "desc": "Press B to open the Hypothesis Board and answer Oracle's question.",
+      "prompt": "Which indicator costs an adversary the MOST to change once you detect it?",
+      "options": [
+        {"id": "a", "text": "File hash values", "feedback": "Bottom of the pyramid. Recompile once and the hash is new."},
+        {"id": "b", "text": "IP addresses", "feedback": "Cheap to change. They rent a new server in minutes."},
+        {"id": "c", "text": "Domain names", "feedback": "Annoying for them, but a new domain costs an hour and a few dollars."},
+        {"id": "d", "text": "Their tactics, techniques, and procedures (TTPs)", "correct": true, "feedback": "Top of the pyramid. Detect behavior and they have to change how they work."}
+      ],
+      "hints": ["Re-read 'The Pyramid of Pain' in your journal.", "The top of the pyramid is labelled TOUGH.", "TTPs."]
+    },
+    {
+      "id": "o6", "type": "open", "panel": "matrix", "title": "Open the ATT&CK Matrix",
+      "desc": "Press M. You'll light up cells here as you map what VELVET LOCUST does.",
+      "hints": ["The matrix key is M.", "Or click MATRIX on the toolbar.", "Press M."]
+    },
+    {
+      "id": "o7", "type": "collect", "title": "Know your adversary",
+      "desc": "Read the VELVET LOCUST profile on the Threat Intel Wall.",
+      "evidence": ["e003"],
+      "hints": ["The intel wall is another node in this room.", "Find INTEL-WALL and press E.", "Open 'Intel: VELVET LOCUST profile'."]
+    }
+  ],
+  "dialogue": {
+    "intro": ["z0_intro_1", "z0_intro_2", "z0_intro_p", "z0_intro_3"],
+    "talk": ["z0_talk_1", "z0_talk_2"],
+    "outro": ["z0_outro_o", "z0_outro_p"]
+  }
+}

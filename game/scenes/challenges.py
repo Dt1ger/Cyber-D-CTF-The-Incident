@@ -1,0 +1,165 @@
+"""Case Files: built-in cases, played apart from the VELVET LOCUST hunt."""
+
+from __future__ import annotations
+
+import pygame
+
+from game.characters.unlock import is_unlocked
+from game.engine import config
+from game.engine.scene import Scene
+from game.systems.challenges import CaseSession, load_challenges, run_command
+from game.ui import theme
+from game.ui.panels.base import draw_wrapped
+from game.ui.text import font
+from game.ui.widgets import ListView, ScrollText, TextInput, draw_panel, key_hint
+
+
+class ChallengesScene(Scene):
+    def on_enter(self, **kwargs) -> None:
+        self.character = self.app.character(self.app.state.get("analyst", "demetri"))
+        theme.set_accent(self.character.accent)
+        self.challenges, self.notes = load_challenges(config.CHALLENGES_DIR)
+        self.solved = set(self.app.saves.custom_solved())
+        self.list = ListView(size=18)
+        self.logs: dict[str, list[tuple[str, str]]] = {}
+        self.sessions: dict[str, CaseSession] = {}
+        self.out = ScrollText(16)
+        self.prompt = TextInput("run> ", 18)
+        self._refresh_list()
+        self._show_current()
+        pygame.key.start_text_input()
+        self.app.audio.play_music("game")
+
+    def on_exit(self) -> None:
+        pygame.key.stop_text_input()
+
+    def _refresh_list(self) -> None:
+        items = []
+        for challenge in self.challenges:
+            done = challenge.id in self.solved
+            mark = "[+] " if done else "[ ] "
+            items.append((f"{mark}Lv{challenge.difficulty}  {challenge.title}",
+                          theme.color("ok") if done else theme.color("text")))
+        self.list.set_items(items)
+
+    @property
+    def current(self):
+        if self.list.selected is None or not self.challenges:
+            return None
+        return self.challenges[self.list.selected]
+
+    def _show_current(self) -> None:
+        challenge = self.current
+        if challenge is None:
+            self.out.set_lines([("The built-in case files could not be read.", "dim")])
+            return
+        layers = len(challenge.layers)
+        log = self.logs.setdefault(challenge.id, [
+            (f"{layers} layer{'s' if layers > 1 else ''} to peel. {len(challenge.evidence)} evidence "
+             f"line(s). {len(challenge.hints)} hint(s).", "dim"),
+            ("Start with identify and evidence. Type help for every command.", "dim"),
+        ])
+        self.out.set_lines(log, follow=True)
+
+    def _session(self, challenge) -> CaseSession:
+        if challenge.id not in self.sessions:
+            self.sessions[challenge.id] = CaseSession.start(challenge)
+        return self.sessions[challenge.id]
+
+    def _run(self, line: str) -> None:
+        challenge = self.current
+        if challenge is None or not line.strip():
+            return
+        result = run_command(challenge, line, self._session(challenge))
+        log = self.logs.setdefault(challenge.id, [])
+        log.append((f"> {line.strip()}", "text"))
+        log.extend(result.lines)
+        if result.solved and challenge.id not in self.solved:
+            had_recruit = is_unlocked(self.app, "aisha_256")
+            self.solved.add(challenge.id)
+            self.app.saves.mark_custom_solved(challenge.id)
+            self._refresh_list()
+            self.app.audio.play("success")
+            if not had_recruit and is_unlocked(self.app, "aisha_256"):
+                log.append(("Aisha_256 is on the roster.", "ok"))
+        elif any(style == "bad" for _, style in result.lines):
+            self.app.audio.play("error")
+        elif line.strip():
+            self.app.audio.play("query")
+        self.out.set_lines(log, follow=True)
+
+    def handle_event(self, event) -> None:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.app.audio.play("back")
+            self.app.scenes.switch("title", menu=True)
+            return
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_UP, pygame.K_DOWN,
+                                                          pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+            if self.list.handle_event(event) == "move":
+                self.app.audio.play("move")
+                self._show_current()
+            return
+        if self.list.handle_event(event, keys=False) == "move":
+            self.app.audio.play("move")
+            self._show_current()
+            return
+        if event.type == pygame.MOUSEWHEEL:
+            self.out.handle_event(event, keys=False)
+            return
+        line = self.prompt.handle_event(event)
+        if line is not None:
+            self._run(line)
+
+    def update(self, dt: float) -> None:
+        self.prompt.update(dt)
+
+    def draw(self, surface) -> None:
+        w, h = surface.get_size()
+        surface.fill((6, 8, 16))
+        panel = pygame.Rect(24, 20, w - 48, h - 56)
+        cleared = sum(1 for c in self.challenges if c.id in self.solved)
+        subtitle = (f"{self.character.name}  ·  {cleared}/{len(self.challenges)} cleared  ·  "
+                    "separate from the hunt")
+        inner = draw_panel(surface, panel, "Case Files", accent=self.character.accent,
+                           subtitle=subtitle)
+        note_h = 22 if self.notes else 0
+        list_rect = pygame.Rect(inner.x, inner.y, 340, inner.height - note_h)
+        body = pygame.Rect(list_rect.right + 18, inner.y, inner.right - list_rect.right - 18, inner.height)
+        self.list.draw(surface, list_rect, accent=self.character.accent)
+        if self.notes:
+            note = font(13, mono=True).render(f"{len(self.notes)} file(s) skipped", True, theme.color("warn"))
+            surface.blit(note, (list_rect.x, list_rect.bottom + 4))
+        self._detail(surface, body)
+        key_hint(surface, "Up/Down choose    help for commands    Esc menu",
+                 (w - 16, h - 10))
+
+    def _detail(self, surface, rect: pygame.Rect) -> None:
+        challenge = self.current
+        if challenge is None:
+            draw_wrapped(
+                surface,
+                "Case Files ships with the game, apart from the VELVET LOCUST hunt. "
+                "Your campaign save is untouched.\n\n"
+                "The built-in cases could not be read. They normally sit in the challenges folder "
+                "next to the game.",
+                rect, 18)
+            return
+        y = draw_wrapped(surface, challenge.title, pygame.Rect(rect.x, rect.y, rect.width, 56),
+                         22, self.character.accent) + 6
+        y = draw_wrapped(surface, challenge.clue, pygame.Rect(rect.x, y, rect.width, 72), 17) + 8
+        session = self._session(challenge)
+        peeled = len(session.history)
+        label = font(14, bold=True).render(
+            f"WORKING TEXT  ·  {peeled} decode(s) applied  ·  {len(session.buffer)} chars  ·  "
+            "show prints it all", True, theme.color("dim"))
+        surface.blit(label, (rect.x, y))
+        y += 22
+        box = pygame.Rect(rect.x, y, rect.width, 88)
+        pygame.draw.rect(surface, (4, 7, 14), box)
+        pygame.draw.rect(surface, theme.color("panel_edge"), box, 1)
+        draw_wrapped(surface, session.buffer, box.inflate(-16, -12), 16, theme.color("amber"), mono=True)
+        y = box.bottom + 10
+        out = pygame.Rect(rect.x, y, rect.width, rect.bottom - y - 46)
+        pygame.draw.rect(surface, (4, 7, 14), out)
+        self.out.draw(surface, out.inflate(-8, -8))
+        self.prompt.draw(surface, pygame.Rect(rect.x, rect.bottom - 38, rect.width, 36), self.character.accent)

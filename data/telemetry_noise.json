@@ -1,0 +1,112 @@
+{
+  "_comment": "Benign background activity mixed into zone telemetry. Fictional hosts and users; IPs from 10.x and documentation ranges only.",
+  "hosts": {
+    "WS-FIN-0142": {"ip": "10.20.4.142", "user": "m.okafor"},
+    "WS-FIN-0139": {"ip": "10.20.4.139", "user": "j.reyes"},
+    "WS-FIN-0150": {"ip": "10.20.4.150", "user": "a.chen"},
+    "WS-ENG-0217": {"ip": "10.20.6.217", "user": "d.kowalski"},
+    "WS-ENG-0221": {"ip": "10.20.6.221", "user": "p.nair"},
+    "WS-HR-0108": {"ip": "10.20.5.108", "user": "l.martin"},
+    "IT-ADM-03": {"ip": "10.20.2.33", "user": "t.brooks"},
+    "FS-CORE-01": {"ip": "10.20.1.10", "user": "SYSTEM"},
+    "DC-01": {"ip": "10.20.0.5", "user": "SYSTEM"},
+    "BACKUP-01": {"ip": "10.20.1.30", "user": "svc_backup"},
+    "JUMP-02": {"ip": "10.20.2.20", "user": "SYSTEM"},
+    "VAULT-DB-01": {"ip": "10.20.9.50", "user": "SYSTEM"},
+    "MAIL-GW-01": {"ip": "10.20.0.25", "user": "SYSTEM"},
+    "PROXY-01": {"ip": "10.20.0.30", "user": "SYSTEM"}
+  },
+  "groups": {
+    "workstations": ["WS-FIN-0142", "WS-FIN-0139", "WS-FIN-0150", "WS-ENG-0217", "WS-ENG-0221", "WS-HR-0108", "IT-ADM-03"],
+    "users": ["WS-FIN-0142", "WS-FIN-0139", "WS-FIN-0150", "WS-ENG-0217", "WS-ENG-0221", "WS-HR-0108"],
+    "others": ["WS-FIN-0139", "WS-FIN-0150", "WS-ENG-0217", "WS-ENG-0221", "WS-HR-0108"],
+    "servers": ["FS-CORE-01", "DC-01", "BACKUP-01", "JUMP-02", "VAULT-DB-01"],
+    "mail": ["MAIL-GW-01"]
+  },
+  "tables": {
+    "email": [
+      {"w": 4, "hosts": "mail", "from": ["notifications@hrportal.example", "it-helpdesk@halcyon.example", "newsletter@industryweekly.example", "noreply@payroll-suite.example"], "reply_to": "", "return_path": "", "recipient": ["j.reyes@halcyon.example", "a.chen@halcyon.example", "d.kowalski@halcyon.example", "p.nair@halcyon.example", "l.martin@halcyon.example", "m.okafor@halcyon.example"], "subject": ["Your timesheet is due Friday", "Scheduled maintenance this weekend", "Industry Weekly: supply chain roundup", "Your payslip is ready"], "attachment": "", "sender_ip": ["192.0.2.15", "192.0.2.77", "10.20.0.40", "192.0.2.120"], "spf": "pass", "dkim": "pass", "dmarc": "pass", "action": "delivered"},
+      {"w": 3, "hosts": "mail", "from": ["d.kowalski@halcyon.example", "p.nair@halcyon.example", "l.martin@halcyon.example", "t.brooks@halcyon.example"], "reply_to": "", "return_path": "", "recipient": ["m.okafor@halcyon.example", "j.reyes@halcyon.example", "a.chen@halcyon.example"], "subject": ["Re: Q3 budget review", "Project Aurora status", "Lunch on Thursday?", "Updated org chart"], "attachment": ["", "", "Budget_Q3_v4.xlsx", "OrgChart_Nov.pdf"], "sender_ip": "10.20.0.40", "spf": "pass", "dkim": "pass", "dmarc": "pass", "action": "delivered"},
+      {"w": 2, "hosts": "mail", "from": ["promo@deal-blast.example", "winner@prize-center.test"], "reply_to": "", "return_path": "", "recipient": ["j.reyes@halcyon.example", "l.martin@halcyon.example", "p.nair@halcyon.example"], "subject": ["You have been selected!", "Limited offer inside"], "attachment": "", "sender_ip": ["203.0.113.201", "203.0.113.202"], "spf": "softfail", "dkim": "none", "dmarc": "none", "action": "quarantined"}
+    ],
+    "proc": [
+      {"w": 6, "hosts": "users", "parent": "explorer.exe", "name": "msedge.exe", "cmdline": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\"", "pid": "{int:2000-9000}"},
+      {"w": 4, "hosts": "users", "parent": "explorer.exe", "name": "outlook.exe", "cmdline": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE\"", "pid": "{int:2000-9000}"},
+      {"w": 3, "hosts": "users", "parent": "explorer.exe", "name": "excel.exe", "cmdline": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\EXCEL.EXE\" \"C:\\Users\\{user}\\Documents\\Budget_Q3_v4.xlsx\"", "pid": "{int:2000-9000}"},
+      {"w": 3, "hosts": "others", "parent": "explorer.exe", "name": "winword.exe", "cmdline": "\"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE\" /n \"C:\\Users\\{user}\\Documents\\Meeting_Notes.docx\"", "pid": "{int:2000-9000}"},
+      {"w": 2, "hosts": "users", "parent": "winword.exe", "name": "splwow64.exe", "cmdline": "C:\\Windows\\splwow64.exe 12288", "pid": "{int:2000-9000}"},
+      {"w": 2, "hosts": "users", "parent": "excel.exe", "name": "splwow64.exe", "cmdline": "C:\\Windows\\splwow64.exe 12288", "pid": "{int:2000-9000}"},
+      {"w": 4, "hosts": "workstations", "parent": "services.exe", "name": "svchost.exe", "cmdline": "C:\\Windows\\system32\\svchost.exe -k netsvcs -p", "user": "SYSTEM", "pid": "{int:600-1900}"},
+      {"w": 3, "hosts": "workstations", "parent": "svchost.exe", "name": "taskhostw.exe", "cmdline": "taskhostw.exe", "pid": "{int:2000-9000}"},
+      {"w": 2, "hosts": "workstations", "parent": "services.exe", "name": "MsMpEng.exe", "cmdline": "\"C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\4.18.24090-0\\MsMpEng.exe\"", "user": "SYSTEM", "pid": "{int:2000-3000}"},
+      {"w": 2, "hosts": "users", "parent": "explorer.exe", "name": "onedrive.exe", "cmdline": "\"C:\\Users\\{user}\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background", "pid": "{int:2000-9000}"},
+      {"w": 2, "hosts": "users", "parent": "explorer.exe", "name": "notepad.exe", "cmdline": "\"C:\\Windows\\system32\\notepad.exe\" C:\\Users\\{user}\\Desktop\\todo.txt", "pid": "{int:2000-9000}"},
+      {"w": 2, "hosts": ["IT-ADM-03"], "parent": "explorer.exe", "name": "powershell.exe", "cmdline": "powershell.exe -File C:\\IT\\Scripts\\Get-PatchStatus.ps1", "pid": "{int:2000-9000}"},
+      {"w": 1, "hosts": ["IT-ADM-03"], "parent": "powershell.exe", "name": "wmic.exe", "cmdline": "wmic qfe list brief", "pid": "{int:2000-9000}"},
+      {"w": 2, "hosts": "servers", "parent": "services.exe", "name": "svchost.exe", "cmdline": "C:\\Windows\\system32\\svchost.exe -k LocalService -p", "user": "SYSTEM", "pid": "{int:600-1900}"},
+      {"w": 1, "hosts": ["BACKUP-01"], "parent": "services.exe", "name": "hbackup.exe", "cmdline": "\"C:\\Program Files\\Halcyon Backup\\hbackup.exe\" --service", "user": "svc_backup", "pid": "{int:2000-3000}"}
+    ],
+    "net": [
+      {"w": 6, "hosts": "users", "name": "msedge.exe", "src": "{ip}", "dst": ["192.0.2.10", "192.0.2.44", "192.0.2.80", "198.51.100.12"], "dport": 443, "proto": "tcp", "domain": ["portal.halcyon.example", "docs.cloudsuite.example", "news.industryweekly.example", "maps.example"], "bytes_out": "{int:800-6000}", "bytes_in": "{int:20000-900000}"},
+      {"w": 3, "hosts": "users", "name": "outlook.exe", "src": "{ip}", "dst": "10.20.0.25", "dport": 443, "proto": "tcp", "domain": "mail.halcyon.example", "bytes_out": "{int:2000-30000}", "bytes_in": "{int:5000-90000}"},
+      {"w": 2, "hosts": "users", "name": "onedrive.exe", "src": "{ip}", "dst": "192.0.2.61", "dport": 443, "proto": "tcp", "domain": "sync.cloudsuite.example", "bytes_out": "{int:1000-80000}", "bytes_in": "{int:1000-50000}"},
+      {"w": 3, "hosts": "workstations", "name": "lsass.exe", "src": "{ip}", "dst": "10.20.0.5", "dport": [88, 389], "proto": "tcp", "domain": "dc-01.corp.halcyon.example", "bytes_out": "{int:300-3000}", "bytes_in": "{int:300-6000}"},
+      {"w": 2, "hosts": "others", "name": "System", "src": "{ip}", "dst": "10.20.1.10", "dport": 445, "proto": "tcp", "domain": "fs-core-01.corp.halcyon.example", "bytes_out": "{int:1000-200000}", "bytes_in": "{int:1000-900000}"},
+      {"w": 2, "hosts": "workstations", "name": "svchost.exe", "src": "{ip}", "dst": "203.0.113.10", "dport": 443, "proto": "tcp", "domain": "updates.osvendor.example", "bytes_out": "{int:1000-4000}", "bytes_in": "{int:10000-4000000}"},
+      {"w": 1, "hosts": ["IT-ADM-03"], "name": "mstsc.exe", "src": "10.20.2.33", "dst": ["10.20.1.10", "10.20.1.30", "10.20.2.20"], "dport": 3389, "proto": "tcp", "domain": "", "bytes_out": "{int:20000-90000}", "bytes_in": "{int:100000-900000}"}
+    ],
+    "dns": [
+      {"w": 6, "hosts": "workstations", "query": ["portal.halcyon.example", "docs.cloudsuite.example", "sync.cloudsuite.example", "news.industryweekly.example", "maps.example", "updates.osvendor.example", "mail.halcyon.example"], "qtype": "A", "answer": ["192.0.2.10", "192.0.2.44", "192.0.2.61", "192.0.2.80", "203.0.113.10", "10.20.0.25"], "process": ["msedge.exe", "outlook.exe", "onedrive.exe", "svchost.exe"]},
+      {"w": 2, "hosts": "workstations", "query": ["_ldap._tcp.dc._msdcs.corp.halcyon.example", "_kerberos._tcp.corp.halcyon.example"], "qtype": "SRV", "answer": "dc-01.corp.halcyon.example", "process": "svchost.exe"},
+      {"w": 1, "hosts": "mail", "query": ["_spf.mailsuite.example", "_dmarc.payroll-suite.example"], "qtype": "TXT", "answer": "\"v=spf1 ip4:192.0.2.0/24 -all\"", "process": "mailgw.exe"}
+    ],
+    "task": [
+      {"w": 3, "hosts": "workstations", "task_name": "\\Microsoft\\Windows\\Defrag\\ScheduledDefrag", "action": "%windir%\\system32\\defrag.exe -c -h -o -$", "trigger": "Weekly", "run_as": "SYSTEM", "author": "Microsoft Corporation", "user": "SYSTEM"},
+      {"w": 3, "hosts": "workstations", "task_name": "\\Microsoft\\Windows\\Windows Defender\\Windows Defender Scheduled Scan", "action": "C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\4.18.24090-0\\MpCmdRun.exe Scan -ScheduleJob", "trigger": "Daily", "run_as": "SYSTEM", "author": "Microsoft Corporation", "user": "SYSTEM"},
+      {"w": 2, "hosts": "users", "task_name": "\\OneDrive Standalone Update Task-S-1-5-21-4021", "action": "%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe", "trigger": "Daily", "run_as": "{user}", "author": "Microsoft Corporation"},
+      {"w": 2, "hosts": "workstations", "task_name": "\\Halcyon\\InventoryAgent", "action": "\"C:\\Program Files\\Halcyon\\Inventory\\invagent.exe\" /report", "trigger": "At startup", "run_as": "SYSTEM", "author": "HALCYON\\svc_sccm", "user": "SYSTEM"},
+      {"w": 1, "hosts": "workstations", "task_name": "\\VendorUpdateTaskMachineCore", "action": "\"C:\\Program Files (x86)\\VendorUpdate\\Update\\VendorUpdate.exe\" /c", "trigger": "At log on of any user", "run_as": "SYSTEM", "author": "VendorUpdate Inc.", "user": "SYSTEM"}
+    ],
+    "reg": [
+      {"w": 3, "hosts": "users", "name": "onedrive.exe", "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\OneDrive", "data": "\"C:\\Users\\{user}\\AppData\\Local\\Microsoft\\OneDrive\\OneDrive.exe\" /background"},
+      {"w": 2, "hosts": "workstations", "name": "msiexec.exe", "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\\SecurityHealth", "data": "%windir%\\system32\\SecurityHealthSystray.exe", "user": "SYSTEM"},
+      {"w": 2, "hosts": "users", "name": "chatsuite.exe", "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\ChatSuite", "data": "\"C:\\Users\\{user}\\AppData\\Local\\ChatSuite\\Update.exe\" --processStart chatsuite.exe"},
+      {"w": 3, "hosts": "users", "name": "explorer.exe", "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RecentDocs\\.docx", "data": "Meeting_Notes.docx"},
+      {"w": 2, "hosts": "workstations", "name": "svchost.exe", "key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\bam\\State\\UserSettings", "data": "(binary)", "user": "SYSTEM"}
+    ],
+    "file": [
+      {"w": 4, "hosts": "users", "name": ["winword.exe", "excel.exe"], "path": ["C:\\Users\\{user}\\AppData\\Local\\Temp\\~WRS{hex:4}.tmp", "C:\\Users\\{user}\\Documents\\~$Budget_Q3_v4.xlsx"], "size": "{int:1000-90000}"},
+      {"w": 3, "hosts": "users", "name": "msedge.exe", "path": "C:\\Users\\{user}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cache\\f_{hex:6}", "size": "{int:2000-400000}"},
+      {"w": 2, "hosts": "users", "name": "onedrive.exe", "path": "C:\\Users\\{user}\\OneDrive - Halcyon\\Documents\\notes_{int:1-40}.docx", "size": "{int:9000-200000}"},
+      {"w": 1, "hosts": "workstations", "name": "MsMpEng.exe", "path": "C:\\ProgramData\\Microsoft\\Windows Defender\\Scans\\History\\Service\\DetectionHistory\\{hex:8}", "size": "{int:500-4000}", "user": "SYSTEM"}
+    ],
+    "access": [
+      {"w": 3, "hosts": "workstations", "source": "MsMpEng.exe", "source_path": "C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\4.18.24090-0\\MsMpEng.exe", "target": "lsass.exe", "granted_access": "0x1000", "source_user": "SYSTEM", "user": "SYSTEM"},
+      {"w": 3, "hosts": "others", "source": "svchost.exe", "source_path": "C:\\Windows\\system32\\svchost.exe", "target": "lsass.exe", "granted_access": "0x1000", "source_user": "SYSTEM", "user": "SYSTEM"},
+      {"w": 2, "hosts": "servers", "source": "wininit.exe", "source_path": "C:\\Windows\\system32\\wininit.exe", "target": "lsass.exe", "granted_access": "0x1FFFFF", "source_user": "SYSTEM", "user": "SYSTEM"},
+      {"w": 2, "hosts": "workstations", "source": "msedge.exe", "source_path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "target": "msedge.exe", "granted_access": "0x1410", "source_user": "{user}"},
+      {"w": 1, "hosts": "workstations", "source": "taskmgr.exe", "source_path": "C:\\Windows\\system32\\taskmgr.exe", "target": "explorer.exe", "granted_access": "0x1400", "source_user": "{user}"}
+    ],
+    "auth": [
+      {"w": 5, "hosts": "servers", "account": ["j.reyes", "a.chen", "d.kowalski", "p.nair", "l.martin"], "logon_type": 3, "src_ip": ["10.20.4.139", "10.20.4.150", "10.20.6.217", "10.20.6.221", "10.20.5.108"], "src_host": "", "auth_pkg": "Kerberos", "user": "SYSTEM"},
+      {"w": 3, "hosts": "users", "account": "{user}", "logon_type": 2, "src_ip": "127.0.0.1", "src_host": "{host}", "auth_pkg": "Negotiate"},
+      {"w": 2, "hosts": ["FS-CORE-01", "BACKUP-01", "JUMP-02"], "account": "t.brooks", "logon_type": 10, "src_ip": "10.20.2.33", "src_host": "IT-ADM-03", "auth_pkg": "Negotiate", "user": "SYSTEM"},
+      {"w": 2, "hosts": "servers", "account": ["FS-CORE-01$", "BACKUP-01$", "JUMP-02$"], "logon_type": 3, "src_ip": ["10.20.1.10", "10.20.1.30", "10.20.2.20"], "src_host": "", "auth_pkg": "Kerberos", "user": "SYSTEM"}
+    ],
+    "share": [
+      {"w": 4, "hosts": ["DC-01"], "account": ["j.reyes", "a.chen", "d.kowalski", "p.nair", "l.martin", "m.okafor"], "share": ["\\\\*\\SYSVOL", "\\\\*\\NETLOGON"], "src_ip": ["10.20.4.139", "10.20.4.150", "10.20.6.217", "10.20.6.221", "10.20.5.108", "10.20.4.142"], "access": "ReadData", "user": "SYSTEM"},
+      {"w": 3, "hosts": ["FS-CORE-01"], "account": ["j.reyes", "a.chen", "m.okafor"], "share": "\\\\*\\Finance", "src_ip": ["10.20.4.139", "10.20.4.150", "10.20.4.142"], "access": ["ReadData", "WriteData"], "user": "SYSTEM"},
+      {"w": 2, "hosts": ["FS-CORE-01"], "account": ["d.kowalski", "p.nair"], "share": "\\\\*\\Engineering", "src_ip": ["10.20.6.217", "10.20.6.221"], "access": ["ReadData", "WriteData"], "user": "SYSTEM"}
+    ],
+    "svc": [
+      {"w": 2, "hosts": "workstations", "service": "Halcyon Inventory Agent", "image": "\"C:\\Program Files\\Halcyon\\Inventory\\invagent.exe\"", "account": "LocalSystem", "start_type": "auto start", "user": "SYSTEM"},
+      {"w": 2, "hosts": "servers", "service": "Microsoft Defender Antivirus Network Inspection Service", "image": "\"C:\\ProgramData\\Microsoft\\Windows Defender\\Platform\\4.18.24090-0\\NisSrv.exe\"", "account": "NT AUTHORITY\\LocalService", "start_type": "demand start", "user": "SYSTEM"},
+      {"w": 1, "hosts": "servers", "service": "OS Vendor Update Orchestrator", "image": "C:\\Windows\\system32\\svchost.exe -k netsvcs", "account": "LocalSystem", "start_type": "auto start", "user": "SYSTEM"}
+    ],
+    "proxy": [
+      {"w": 6, "hosts": "users", "src": "{ip}", "method": ["GET", "GET", "POST"], "domain": ["portal.halcyon.example", "docs.cloudsuite.example", "news.industryweekly.example", "maps.example", "weather.example"], "uri": ["/", "/home", "/api/feed", "/static/app.js", "/login"], "dst": ["192.0.2.10", "192.0.2.44", "192.0.2.80", "198.51.100.12", "198.51.100.90"], "status": 200, "bytes_out": "{int:300-5000}", "bytes_in": "{int:4000-800000}", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/130.0"},
+      {"w": 2, "hosts": "users", "src": "{ip}", "method": "POST", "domain": "sync.cloudsuite.example", "uri": "/v1/upload", "dst": "192.0.2.61", "status": 200, "bytes_out": "{int:5000-300000}", "bytes_in": "{int:300-2000}", "user_agent": "OneDriveSync/24.1"},
+      {"w": 2, "hosts": "workstations", "src": "{ip}", "method": "GET", "domain": "updates.osvendor.example", "uri": "/v2/manifest", "dst": "203.0.113.10", "status": 200, "bytes_out": "{int:400-1200}", "bytes_in": "{int:5000-60000}", "user_agent": "OSUpdateAgent/10.0"}
+    ]
+  }
+}
