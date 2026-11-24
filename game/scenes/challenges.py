@@ -23,8 +23,10 @@ class ChallengesScene(Scene):
         self.list = ListView(size=18)
         self.logs: dict[str, list[tuple[str, str]]] = {}
         self.sessions: dict[str, CaseSession] = {}
+        self.histories: dict[str, list[str]] = {}
         self.out = ScrollText(16)
         self.prompt = TextInput("run> ", 18)
+        self.focus = "list"
         self._refresh_list()
         self._show_current()
         pygame.key.start_text_input()
@@ -88,27 +90,55 @@ class ChallengesScene(Scene):
             self.app.audio.play("query")
         self.out.set_lines(log, follow=True)
 
+    def _open(self) -> None:
+        """Move into the selected case: Up/Down now walk its command history."""
+        challenge = self.current
+        if challenge is None:
+            return
+        self.focus = "case"
+        self.prompt.history = self.histories.setdefault(challenge.id, [])
+        self.prompt.hist_i = len(self.prompt.history)
+        self.prompt.set("")
+
     def handle_event(self, event) -> None:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.app.audio.play("back")
-            self.app.scenes.switch("title", menu=True)
+            if self.focus == "case":
+                self.focus = "list"
+            else:
+                self.app.scenes.switch("title", menu=True)
             return
-        if event.type == pygame.KEYDOWN and event.key in (pygame.K_UP, pygame.K_DOWN,
-                                                          pygame.K_PAGEUP, pygame.K_PAGEDOWN):
-            if self.list.handle_event(event) == "move":
-                self.app.audio.play("move")
-                self._show_current()
-            return
-        if self.list.handle_event(event, keys=False) == "move":
-            self.app.audio.play("move")
+        clicked = self.list.handle_event(event, keys=False)
+        if clicked:
+            self.app.audio.play("move" if clicked == "move" else "confirm")
             self._show_current()
+            self._open()
             return
         if event.type == pygame.MOUSEWHEEL:
             self.out.handle_event(event, keys=False)
             return
+        if self.focus == "list":
+            self._list_event(event)
+            return
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+            self.out.handle_event(event)
+            return
         line = self.prompt.handle_event(event)
         if line is not None:
             self._run(line)
+
+    def _list_event(self, event) -> None:
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_UP, pygame.K_DOWN, pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+                if self.list.handle_event(event) == "move":
+                    self.app.audio.play("move")
+                    self._show_current()
+            elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_RIGHT):
+                self.app.audio.play("confirm")
+                self._open()
+        elif event.type == pygame.TEXTINPUT and not event.text.isspace():
+            self._open()
+            self.prompt.handle_event(event)
 
     def update(self, dt: float) -> None:
         self.prompt.update(dt)
@@ -125,13 +155,14 @@ class ChallengesScene(Scene):
         note_h = 22 if self.notes else 0
         list_rect = pygame.Rect(inner.x, inner.y, 340, inner.height - note_h)
         body = pygame.Rect(list_rect.right + 18, inner.y, inner.right - list_rect.right - 18, inner.height)
-        self.list.draw(surface, list_rect, accent=self.character.accent)
+        self.list.draw(surface, list_rect, accent=self.character.accent, focused=self.focus == "list")
         if self.notes:
             note = font(13, mono=True).render(f"{len(self.notes)} file(s) skipped", True, theme.color("warn"))
             surface.blit(note, (list_rect.x, list_rect.bottom + 4))
         self._detail(surface, body)
-        key_hint(surface, "Up/Down choose    help for commands    Esc menu",
-                 (w - 16, h - 10))
+        hint = ("Up/Down choose    Enter open case    Esc menu" if self.focus == "list" else
+                "Enter run    Up/Down history    PgUp/PgDn scroll    Esc back to cases")
+        key_hint(surface, hint, (w - 16, h - 10))
 
     def _detail(self, surface, rect: pygame.Rect) -> None:
         challenge = self.current
@@ -162,4 +193,12 @@ class ChallengesScene(Scene):
         out = pygame.Rect(rect.x, y, rect.width, rect.bottom - y - 46)
         pygame.draw.rect(surface, (4, 7, 14), out)
         self.out.draw(surface, out.inflate(-8, -8))
-        self.prompt.draw(surface, pygame.Rect(rect.x, rect.bottom - 38, rect.width, 36), self.character.accent)
+        prompt = pygame.Rect(rect.x, rect.bottom - 38, rect.width, 36)
+        if self.focus == "case":
+            self.prompt.draw(surface, prompt, self.character.accent)
+            return
+        pygame.draw.rect(surface, (6, 10, 20), prompt)
+        pygame.draw.rect(surface, theme.color("panel_edge"), prompt, 1)
+        idle = font(16, mono=True).render("Press Enter or start typing to open this case",
+                                          True, theme.color("dim"))
+        surface.blit(idle, idle.get_rect(midleft=(prompt.x + 10, prompt.centery)))

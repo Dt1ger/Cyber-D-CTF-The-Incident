@@ -9,6 +9,20 @@ import pygame
 
 _scanline_cache: dict[tuple[int, int], pygame.Surface] = {}
 _vignette_cache: dict[tuple[int, int], pygame.Surface] = {}
+_fill_cache: dict[tuple, pygame.Surface] = {}
+
+
+def translucent(size, rgba) -> pygame.Surface:
+    """A cached see-through rectangle for veils and panel backs. Shared: don't draw on it."""
+    key = (tuple(size), tuple(rgba))
+    surf = _fill_cache.get(key)
+    if surf is None:
+        if len(_fill_cache) >= 256:
+            _fill_cache.clear()
+        surf = pygame.Surface(key[0], pygame.SRCALPHA)
+        surf.fill(key[1])
+        _fill_cache[key] = surf
+    return surf
 
 
 def scanlines(size: tuple[int, int]) -> pygame.Surface:

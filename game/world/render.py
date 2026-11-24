@@ -46,6 +46,8 @@ class MapRenderer:
         self.time = 0.0
         self._fog_small = None
         self._fog_version = -1
+        self._fog_big = None
+        self._fog_key = None
 
     def _build(self) -> pygame.Surface:
         m = self.map
@@ -133,6 +135,9 @@ class MapRenderer:
         ty1 = min(m.height, (cy + vh) // TILE + 2)
         if tx1 <= tx0 or ty1 <= ty0:
             return
-        part = self._fog_small.subsurface((tx0, ty0, tx1 - tx0, ty1 - ty0))
-        big = pygame.transform.smoothscale(part, ((tx1 - tx0) * TILE, (ty1 - ty0) * TILE))
-        surface.blit(big, (tx0 * TILE - cx - TILE // 2, ty0 * TILE - cy - TILE // 2))
+        key = (self._fog_version, tx0, ty0, tx1, ty1)
+        if self._fog_key != key:
+            part = self._fog_small.subsurface((tx0, ty0, tx1 - tx0, ty1 - ty0))
+            self._fog_big = pygame.transform.smoothscale(part, ((tx1 - tx0) * TILE, (ty1 - ty0) * TILE))
+            self._fog_key = key
+        surface.blit(self._fog_big, (tx0 * TILE - cx - TILE // 2, ty0 * TILE - cy - TILE // 2))

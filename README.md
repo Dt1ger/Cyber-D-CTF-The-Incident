@@ -181,6 +181,7 @@ Business email compromise stays in the VELVET LOCUST hunt.
 
 How a case plays:
 
+- Up/Down picks a case; Enter, a click, or just typing opens it. Inside a case the prompt works like the Hunt Terminal: Up/Down recalls that case's past commands, PgUp/PgDn scrolls the output, and Esc goes back to the case list.
 - The encoding isn't shown. `identify` describes the working text (alphabet, length, whether it reads as English) without naming the answer.
 - `decode base64|hex|rot13` peels one layer. `decode xor <key>` works on hex bytes; the key is never in the clue, only in the `evidence` lines, next to a decoy secret.
 - `undo` steps back one decode, `reset` goes back to the artifact, `show` prints the working text in full.

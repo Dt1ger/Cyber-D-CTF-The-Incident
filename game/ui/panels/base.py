@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pygame
 
+from game.art.effects import translucent
 from game.ui import theme
-from game.ui.text import font
+from game.ui.text import font, rendered
 from game.ui.widgets import ScrollText, draw_panel, key_hint, wrap
 
 
@@ -47,9 +48,7 @@ class Panel:
         self.time += dt
 
     def draw(self, surface) -> None:
-        veil = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        veil.fill((0, 0, 0, 140))
-        surface.blit(veil, (0, 0))
+        surface.blit(translucent(surface.get_size(), (0, 0, 0, 140)), (0, 0))
         rect = self.frame(surface)
         inner = draw_panel(surface, rect, self.title, subtitle=self.subtitle())
         footer_h = font(14, mono=True).get_linesize() + 4
@@ -106,6 +105,6 @@ def draw_wrapped(surface, text: str, rect: pygame.Rect, size: int = 17, color=No
     for line in wrap(text, fnt, rect.width):
         if y + fnt.get_linesize() > rect.bottom:
             break
-        surface.blit(fnt.render(line, True, color or theme.color("text")), (rect.x, y))
+        surface.blit(rendered(fnt, line, color or theme.color("text")), (rect.x, y))
         y += fnt.get_linesize() + line_gap
     return y

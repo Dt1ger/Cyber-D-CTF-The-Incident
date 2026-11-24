@@ -150,3 +150,58 @@ def test_custom_mode_does_not_write_a_campaign_save(tmp_path):
         app.scenes.draw(app.screen)
     finally:
         app.running = False
+
+
+def test_case_prompt_recalls_commands_instead_of_switching_cases(tmp_path):
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    import pygame
+    from game.engine.app import App
+
+    def key(k):
+        return pygame.event.Event(pygame.KEYDOWN, key=k, mod=0, unicode="", scancode=0)
+
+    def run(scene, text):
+        scene.handle_event(pygame.event.Event(pygame.TEXTINPUT, text=text))
+        scene.handle_event(key(pygame.K_RETURN))
+
+    app = App(start_scene="title", saves_dir=tmp_path)
+    try:
+        app.scenes.switch("challenges", fade=False)
+        scene = app.scenes.current
+        assert scene.focus == "list"
+        scene.handle_event(key(pygame.K_DOWN))
+        second = scene.current.id
+        assert scene.list.index == 1
+
+        scene.handle_event(key(pygame.K_RETURN))
+        assert scene.focus == "case"
+        run(scene, "identify")
+        run(scene, "evidence")
+        scene.handle_event(key(pygame.K_UP))
+        assert scene.prompt.text == "evidence" and scene.current.id == second
+        scene.handle_event(key(pygame.K_UP))
+        assert scene.prompt.text == "identify" and scene.list.index == 1
+        scene.handle_event(key(pygame.K_DOWN))
+        scene.handle_event(key(pygame.K_DOWN))
+        assert scene.prompt.text == "" and scene.list.index == 1
+
+        scene.handle_event(key(pygame.K_ESCAPE))
+        assert scene.focus == "list"
+        scene.handle_event(key(pygame.K_UP))
+        assert scene.list.index == 0
+        scene.handle_event(pygame.event.Event(pygame.TEXTINPUT, text="h"))
+        assert scene.focus == "case" and scene.prompt.text == "h"
+        scene.handle_event(key(pygame.K_UP))
+        assert scene.prompt.text == "h", "each case keeps its own history"
+
+        scene.handle_event(key(pygame.K_ESCAPE))
+        scene.handle_event(key(pygame.K_DOWN))
+        scene.handle_event(key(pygame.K_RETURN))
+        scene.handle_event(key(pygame.K_UP))
+        assert scene.prompt.text == "evidence"
+        app.screen.fill((0, 0, 0))
+        app.scenes.draw(app.screen)
+    finally:
+        app.running = False

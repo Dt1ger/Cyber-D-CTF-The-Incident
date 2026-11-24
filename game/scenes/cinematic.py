@@ -11,7 +11,7 @@ from game.art import effects
 from game.engine import config
 from game.engine.scene import Scene
 from game.ui import theme
-from game.ui.text import font
+from game.ui.text import font, rendered
 from game.ui.widgets import wrap
 
 HOLD = 5.4
@@ -102,16 +102,12 @@ class CinematicScene(Scene):
         w, h = surface.get_size()
         if self.bg:
             surface.blit(self.bg.surface, (0, 0))
-            veil = pygame.Surface((w, h), pygame.SRCALPHA)
-            veil.fill((0, 0, 0, 160))
-            surface.blit(veil, (0, 0))
+            surface.blit(effects.translucent((w, h), (0, 0, 0, 160)), (0, 0))
         else:
             self._grid(surface)
         self.particles.draw(surface)
         box = pygame.Rect(120, h // 2 - 150, w - 240, 250)
-        bg = pygame.Surface(box.size, pygame.SRCALPHA)
-        bg.fill((2, 4, 12, 190))
-        surface.blit(bg, box)
+        surface.blit(effects.translucent(box.size, (2, 4, 12, 190)), box)
         pygame.draw.line(surface, config.CYAN, (box.x, box.y), (box.x + 120, box.y), 2)
         pygame.draw.line(surface, config.MAGENTA, (box.right - 120, box.bottom), (box.right, box.bottom), 2)
         fnt = font(27)
@@ -119,14 +115,14 @@ class CinematicScene(Scene):
         lines = wrap(text, fnt, box.width - 80)
         y = box.y + 36
         for line in lines:
-            surface.blit(fnt.render(line, True, theme.color("text")), (box.x + 40, y))
+            surface.blit(rendered(fnt, line, theme.color("text")), (box.x + 40, y))
             y += fnt.get_linesize() + 4
         if self.shown < len(self.pages[self.page]) and int(self.time * 3) % 2 == 0:
             cx = box.x + 40 + (fnt.size(lines[-1])[0] if lines else 0) + 3
             pygame.draw.rect(surface, config.CYAN, (cx, y - fnt.get_linesize() - 2, 12, fnt.get_height()))
         dots = "".join("o" if i == self.page else "." for i in range(len(self.pages)))
-        surface.blit(font(16, mono=True).render(dots, True, theme.color("dim")), (box.x, box.bottom + 14))
-        hint = font(15, mono=True).render("ENTER next    ESC skip", True, theme.color("dim"))
+        surface.blit(rendered(font(16, mono=True), dots, theme.color("dim")), (box.x, box.bottom + 14))
+        hint = rendered(font(15, mono=True), "ENTER next    ESC skip", theme.color("dim"))
         surface.blit(hint, hint.get_rect(bottomright=(w - 24, h - 18)))
         if self.glitch_t > 0:
             effects.glitch(surface, 0.5, self.rng)

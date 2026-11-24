@@ -10,7 +10,7 @@ from game.art import effects
 from game.engine import config
 from game.engine.scene import Scene
 from game.ui import theme
-from game.ui.text import font
+from game.ui.text import font, rendered
 from game.ui.widgets import Menu, draw_panel
 from game.world.zone_data import debrief_index
 
@@ -102,7 +102,7 @@ class TitleScene(Scene):
                     logo, (max_w, max(1, round(logo.get_height() * scale))))
             surface.blit(logo, logo.get_rect(center=(w // 2, int(h * 0.2))))
         else:
-            sub = font(20, bold=True).render(config.SUBTITLE.upper(), True, config.MAGENTA)
+            sub = rendered(font(20, bold=True), config.SUBTITLE.upper(), config.MAGENTA).copy()
             sub.set_alpha(int(170 + 85 * p))
             pos = self.bg.point(0.5, 0.222)
             surface.blit(sub, sub.get_rect(center=pos))
@@ -111,13 +111,11 @@ class TitleScene(Scene):
             glow = tuple(int(c * (0.5 + 0.5 * p)) for c in config.CYAN)
             effects.glow_rect(surface, r.inflate(10, 8), glow, width=2, radius=6, layers=4, alpha=int(60 + 80 * p))
         if not self.menu_open:
-            text = font(26, bold=True).render("PRESS ENTER TO JACK IN", True, config.CYAN)
+            text = rendered(font(26, bold=True), "PRESS ENTER TO JACK IN", config.CYAN).copy()
             text.set_alpha(int(110 + 145 * p))
             surface.blit(text, text.get_rect(center=(w // 2, int(h * 0.935))))
         else:
-            veil = pygame.Surface((w, h), pygame.SRCALPHA)
-            veil.fill((0, 0, 0, 130))
-            surface.blit(veil, (0, 0))
+            surface.blit(effects.translucent((w, h), (0, 0, 0, 130)), (0, 0))
             panel = pygame.Rect(0, 0, 460, 360)
             panel.center = (w // 2, int(h * 0.56))
             draw_panel(surface, panel, "Main Menu", accent=config.CYAN, alpha=235)
@@ -125,10 +123,10 @@ class TitleScene(Scene):
             best = self.app.saves.load_profile().get("best", {})
             if best:
                 parts = [f"{c.title()}: {b['rank']} ({b['score']})" for c, b in best.items()]
-                t = font(15, mono=True).render("BEST  " + "   ".join(parts), True, theme.color("amber"))
+                t = rendered(font(15, mono=True), "BEST  " + "   ".join(parts), theme.color("amber"))
                 surface.blit(t, t.get_rect(center=(w // 2, panel.bottom + 22)))
-        foot = font(13, mono=True).render("F11 fullscreen   F8 mute   Offline training game. All names, "
-                                          "IPs and domains are fictional.", True, theme.color("dim"))
+        foot = rendered(font(13, mono=True), "F11 fullscreen   F8 mute   Offline training game. All names, "
+                                             "IPs and domains are fictional.", theme.color("dim"))
         surface.blit(foot, foot.get_rect(bottomright=(w - 10, h - 6)))
         if self.glitch_t > 0:
             effects.glitch(surface, 0.35, self.rng)

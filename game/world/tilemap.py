@@ -152,26 +152,42 @@ class Fog:
         self.explored = [[False] * tmap.width for _ in range(tmap.height)]
         self.version = 0
         self._last = None
+        self._changed = False
 
-    def reveal_rect(self, x: int, y: int, w: int, h: int) -> None:
+    def _reveal(self, xx: int, yy: int) -> None:
+        row = self.explored[yy]
+        if not row[xx]:
+            row[xx] = True
+            self._changed = True
+
+    def _reveal_rect(self, x: int, y: int, w: int, h: int) -> None:
         for yy in range(max(0, y - 1), min(self.map.height, y + h + 1)):
             for xx in range(max(0, x - 1), min(self.map.width, x + w + 1)):
-                self.explored[yy][xx] = True
-        self.version += 1
+                self._reveal(xx, yy)
+
+    def reveal_rect(self, x: int, y: int, w: int, h: int) -> None:
+        self._changed = False
+        self._reveal_rect(x, y, w, h)
+        if self._changed:
+            self.version += 1
 
     def update(self, tx: int, ty: int) -> None:
+        """Reveal around the player. ``version`` only moves when a new tile is uncovered,
+        so the fog and minimap aren't rebuilt for every step through known ground."""
         if (tx, ty) == self._last:
             return
         self._last = (tx, ty)
+        self._changed = False
         r = self.radius
         for yy in range(max(0, ty - r), min(self.map.height, ty + r + 1)):
             for xx in range(max(0, tx - r), min(self.map.width, tx + r + 1)):
                 if (xx - tx) ** 2 + (yy - ty) ** 2 <= r * r:
-                    self.explored[yy][xx] = True
+                    self._reveal(xx, yy)
         room = self.map.room_at(tx, ty)
         if room:
-            self.reveal_rect(*room.rect)
-        self.version += 1
+            self._reveal_rect(*room.rect)
+        if self._changed:
+            self.version += 1
 
     def is_explored(self, tx: int, ty: int) -> bool:
         return 0 <= ty < self.map.height and 0 <= tx < self.map.width and self.explored[ty][tx]

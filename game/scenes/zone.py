@@ -7,6 +7,7 @@ import random
 
 import pygame
 
+from game.art.effects import translucent
 from game.engine import config
 from game.engine.camera import Camera
 from game.engine.scene import Scene
@@ -19,7 +20,7 @@ from game.ui import theme
 from game.ui.dialogue import DialogueBox
 from game.ui.hud import HUD, TOOL_KEYS
 from game.ui.panels import TOOL_PANELS, EvidencePanel, InfoPanel
-from game.ui.text import font, glow_text
+from game.ui.text import font, glow_text, rendered
 from game.world.atmosphere import Atmosphere
 from game.world.render import MapRenderer
 from game.world.tilemap import TILE, Fog, generate
@@ -76,6 +77,7 @@ class ZoneScene(Scene):
         self.click_target = None
         self.banner = 3.2
         self.flag_banner = 0.0
+        self._banner_parts = {}
         self.exiting = False
         self.time = 0.0
         self.idle_i = random.Random(idx).randrange(5)
@@ -371,9 +373,7 @@ class ZoneScene(Scene):
             return
         if self.backdrop:
             surface.blit(self.backdrop.surface, self.backdrop.rect)
-            veil = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            veil.fill((2, 4, 10, 200))
-            surface.blit(veil, (0, 0))
+            surface.blit(translucent(surface.get_size(), (2, 4, 10, 200)), (0, 0))
         elif self.atmosphere:
             self.atmosphere.draw(surface, self.time)
         cam = self.camera.pos
@@ -383,7 +383,7 @@ class ZoneScene(Scene):
             gx, gy = self.map.gate[0]
             sx, sy = self.camera.to_screen((gx + 0.5) * TILE, gy * TILE - 10)
             col = theme.color("ok") if self.map.gate_open else theme.color("bad")
-            label = font(15, mono=True, bold=True).render("EXIT  >>" if self.map.gate_open else "EXIT", True, col)
+            label = rendered(font(15, mono=True, bold=True), "EXIT  >>" if self.map.gate_open else "EXIT", col)
             surface.blit(label, label.get_rect(midbottom=(sx, sy)))
         drawables = [(nv.y, "node", nv) for nv in self.node_views]
         drawables.append((self.oracle.y, "oracle", self.oracle))
@@ -409,32 +409,42 @@ class ZoneScene(Scene):
         if self.flag_banner > 0:
             self._flag(surface)
 
+    def _faded(self, key, make, alpha: float) -> pygame.Surface:
+        """A banner piece built once per zone; only its alpha changes from frame to frame."""
+        surf = self._banner_parts.get(key)
+        if surf is None:
+            surf = self._banner_parts[key] = make()
+        surf.set_alpha(int(255 * alpha))
+        return surf
+
+    @staticmethod
+    def _band(width: int, height: int, rgba) -> pygame.Surface:
+        band = pygame.Surface((width, height), pygame.SRCALPHA)
+        band.fill(rgba)
+        return band
+
     def _banner(self, surface) -> None:
         a = min(1.0, self.banner / 0.6, (3.2 - self.banner) / 0.4)
         w, h = surface.get_size()
-        band = pygame.Surface((w, 170), pygame.SRCALPHA)
-        band.fill((2, 4, 12, int(220 * a)))
+        z = self.zone
+        band = self._faded(("band", w), lambda: self._band(w, 170, (2, 4, 12, 220)), a)
         surface.blit(band, (0, h // 2 - 120))
-        sub = font(18, mono=True).render(f"ZONE {self.zone.index}  //  {self.zone.phase}", True, theme.color("dim"))
-        sub.set_alpha(int(255 * a))
+        sub = self._faded("sub", lambda: font(18, mono=True).render(
+            f"ZONE {z.index}  //  {z.phase}", True, theme.color("dim")), a)
         surface.blit(sub, sub.get_rect(center=(w // 2, h // 2 - 88)))
-        title = glow_text(self.zone.name.upper(), font(52, bold=True), self.zone.accent)
-        title.set_alpha(int(255 * a))
+        title = self._faded("title", lambda: glow_text(z.name.upper(), font(52, bold=True), z.accent), a)
         surface.blit(title, title.get_rect(center=(w // 2, h // 2 - 40)))
-        if self.zone.lesson:
-            les = font(18).render(self.zone.lesson, True, theme.color("text"))
-            les.set_alpha(int(255 * a))
+        if z.lesson:
+            les = self._faded("lesson", lambda: font(18).render(z.lesson, True, theme.color("text")), a)
             surface.blit(les, les.get_rect(center=(w // 2, h // 2 + 14)))
 
     def _flag(self, surface) -> None:
         w, h = surface.get_size()
         a = min(1.0, self.flag_banner / 0.6)
-        band = pygame.Surface((w, 130), pygame.SRCALPHA)
-        band.fill((0, 0, 0, int(210 * a)))
+        band = self._faded(("flag_band", w), lambda: self._band(w, 130, (0, 0, 0, 210)), a)
         surface.blit(band, (0, h // 2 - 65))
-        t = glow_text("FLAG CAPTURED", font(46, bold=True), (57, 255, 20))
-        t.set_alpha(int(255 * a))
+        t = self._faded("captured", lambda: glow_text("FLAG CAPTURED", font(46, bold=True), (57, 255, 20)), a)
         surface.blit(t, t.get_rect(center=(w // 2, h // 2 - 18)))
-        f = font(22, mono=True, bold=True).render(self.zone.flag or "", True, theme.color("amber"))
-        f.set_alpha(int(255 * a))
+        f = self._faded("flag", lambda: font(22, mono=True, bold=True).render(
+            self.zone.flag or "", True, theme.color("amber")), a)
         surface.blit(f, f.get_rect(center=(w // 2, h // 2 + 30)))

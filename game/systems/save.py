@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 from pathlib import Path
@@ -38,6 +39,8 @@ class SaveStore:
         self.autosave = self.folder / "autosave.json"
         self.profile = self.folder / "profile.json"
         self.settings = self.folder / "settings.json"
+        self._profile: dict = {}
+        self._profile_stamp = None
 
     def has_run(self) -> bool:
         return self.load_run() is not None
@@ -61,9 +64,17 @@ class SaveStore:
             pass
 
     def load_profile(self) -> dict:
-        data = read_json(self.profile) or {}
-        data.setdefault("best", {})
-        return data
+        """The profile, re-read only when the file changes. Callers get their own copy."""
+        try:
+            st = self.profile.stat()
+            stamp = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            stamp = None
+        if stamp is None or self._profile_stamp != stamp:
+            data = read_json(self.profile) or {}
+            data.setdefault("best", {})
+            self._profile, self._profile_stamp = data, stamp
+        return copy.deepcopy(self._profile)
 
     def record_result(self, character: str, rank: str, score: int) -> bool:
         """Store the result if it beats the character's best. Returns True if it did."""
@@ -75,8 +86,12 @@ class SaveStore:
             profile["best"][character] = {"rank": rank, "score": score}
         if better or not profile.get("cleared"):
             profile["cleared"] = True
-            write_json(self.profile, profile)
+            self._write_profile(profile)
         return better
+
+    def _write_profile(self, profile: dict) -> None:
+        self._profile_stamp = None
+        write_json(self.profile, profile)
 
     def hunt_cleared(self) -> bool:
         profile = self.load_profile()
@@ -94,4 +109,4 @@ class SaveStore:
         if challenge_id not in done:
             done.append(challenge_id)
             profile["custom"] = done
-            write_json(self.profile, profile)
+            self._write_profile(profile)

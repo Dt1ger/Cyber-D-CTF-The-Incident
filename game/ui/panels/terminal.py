@@ -6,7 +6,7 @@ import pygame
 
 from game.ui import theme
 from game.ui.panels.base import Panel, draw_wrapped
-from game.ui.text import font
+from game.ui.text import font, rendered
 from game.ui.widgets import ScrollText, TextInput
 
 
@@ -66,29 +66,29 @@ class TerminalPanel(Panel):
         pygame.draw.line(surface, theme.color("panel_edge"), (side.x - 9, side.y), (side.x - 9, side.bottom))
         y = side.y
         f = font(16, bold=True)
-        surface.blit(f.render("TABLES", True, theme.accent), (side.x, y))
+        surface.blit(rendered(f, "TABLES", theme.accent), (side.x, y))
         y += 24
         fm = font(15, mono=True)
         for t in self.state.zone.tables.values():
-            surface.blit(fm.render(f"{t.name:<7}{len(t.rows):>4} rows", True, theme.color("text")), (side.x, y))
+            surface.blit(rendered(fm, f"{t.name:<7}{len(t.rows):>4} rows", theme.color("text")), (side.x, y))
             y += 20
         y += 10
         obj = self.state.current
         if obj and obj["type"] in ("query", "decode", "flag"):
-            surface.blit(f.render("CURRENT OBJECTIVE", True, theme.accent), (side.x, y))
+            surface.blit(rendered(f, "CURRENT OBJECTIVE", theme.accent), (side.x, y))
             y = draw_wrapped(surface, obj["title"], pygame.Rect(side.x, y + 24, side_w, 60), 16,
                              theme.color("amber")) + 4
             y = draw_wrapped(surface, obj.get("desc", ""), pygame.Rect(side.x, y, side_w, 140), 15,
                              theme.color("text")) + 10
         if self.state.flag_sense and self.state.zone.pivot_tip:
-            surface.blit(f.render("FLAG SENSE", True, (57, 255, 20)), (side.x, y))
+            surface.blit(rendered(f, "FLAG SENSE", (57, 255, 20)), (side.x, y))
             y = draw_wrapped(surface, self.state.zone.pivot_tip, pygame.Rect(side.x, y + 24, side_w, 120),
                              15, theme.color("text")) + 10
         cheat = ['search <table> where f="v"', 'f~"part"  f!="v"  n>100', 'a and b   a or b   not a',
                  'f in ("x", "y")', '| count by f   | head 10', '| fields a, b  | sort time',
                  'decode base64 <row-id>']
-        surface.blit(f.render("CHEAT SHEET", True, theme.accent), (side.x, max(y, side.bottom - 190)))
+        surface.blit(rendered(f, "CHEAT SHEET", theme.accent), (side.x, max(y, side.bottom - 190)))
         y = max(y, side.bottom - 190) + 24
         for c in cheat:
-            surface.blit(font(14, mono=True).render(c, True, theme.color("dim")), (side.x, y))
+            surface.blit(rendered(font(14, mono=True), c, theme.color("dim")), (side.x, y))
             y += 19

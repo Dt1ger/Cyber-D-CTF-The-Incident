@@ -7,11 +7,24 @@ from __future__ import annotations
 
 import pygame
 
+from game.art.effects import translucent
 from game.ui import theme
-from game.ui.text import font
+from game.ui.text import font, rendered
+
+_wrapped: dict[tuple, list[str]] = {}
 
 
 def wrap(text: str, fnt: pygame.font.Font, width: int) -> list[str]:
+    key = (text, fnt, width)
+    lines = _wrapped.get(key)
+    if lines is None:
+        if len(_wrapped) >= 2048:
+            _wrapped.clear()
+        lines = _wrapped[key] = _wrap(text, fnt, width)
+    return list(lines)
+
+
+def _wrap(text: str, fnt: pygame.font.Font, width: int) -> list[str]:
     lines: list[str] = []
     for para in str(text).split("\n"):
         if not para:
@@ -38,7 +51,7 @@ def wrap(text: str, fnt: pygame.font.Font, width: int) -> list[str]:
 
 
 def draw_text(surface, text, pos, size=18, color=None, mono=False, bold=False, anchor="topleft"):
-    surf = font(size, mono, bold).render(str(text), True, color or theme.color("text"))
+    surf = rendered(font(size, mono, bold), str(text), color or theme.color("text"))
     rect = surf.get_rect(**{anchor: pos})
     surface.blit(surf, rect)
     return rect
@@ -47,9 +60,7 @@ def draw_text(surface, text, pos, size=18, color=None, mono=False, bold=False, a
 def draw_panel(surface: pygame.Surface, rect: pygame.Rect, title: str | None = None,
                accent=None, alpha: int = 238, subtitle: str | None = None) -> pygame.Rect:
     accent = accent or theme.accent
-    bg = pygame.Surface(rect.size, pygame.SRCALPHA)
-    bg.fill((*theme.color("panel"), alpha))
-    surface.blit(bg, rect.topleft)
+    surface.blit(translucent(rect.size, (*theme.color("panel"), alpha)), rect.topleft)
     pygame.draw.rect(surface, theme.color("panel_edge"), rect, 1, border_radius=6)
     pygame.draw.line(surface, accent, (rect.x + 8, rect.y), (rect.right - 8, rect.y), 2)
     for cx, cy, dx, dy in ((rect.x, rect.y, 1, 1), (rect.right - 1, rect.y, -1, 1),
@@ -58,11 +69,11 @@ def draw_panel(surface: pygame.Surface, rect: pygame.Rect, title: str | None = N
         pygame.draw.line(surface, accent, (cx, cy), (cx, cy + 14 * dy), 2)
     inner = rect.inflate(-28, -24)
     if title:
-        t = font(22, bold=True).render(title.upper(), True, accent)
+        t = rendered(font(22, bold=True), title.upper(), accent)
         surface.blit(t, (inner.x, inner.y))
         top = inner.y + t.get_height() + 2
         if subtitle:
-            s = font(15, mono=True).render(subtitle, True, theme.color("dim"))
+            s = rendered(font(15, mono=True), subtitle, theme.color("dim"))
             surface.blit(s, (inner.x, top))
             top += s.get_height() + 2
         pygame.draw.line(surface, theme.color("panel_edge"), (inner.x, top + 4), (inner.right, top + 4))
@@ -220,7 +231,7 @@ class ListView:
                 label = label[:-2]
             if label != text:
                 label = label[:-1] + "~"
-            surface.blit(fnt.render(label, True, color), (rect.x + 8, y + 3))
+            surface.blit(rendered(fnt, label, color), (rect.x + 8, y + 3))
         surface.set_clip(clip)
         if len(self.items) > n:
             bar_h = max(20, rect.height * n // len(self.items))
@@ -295,7 +306,7 @@ class ScrollText:
         clip = surface.get_clip()
         surface.set_clip(rect)
         for i, (text, style) in enumerate(wrapped[self.scroll:self.scroll + n + 1]):
-            surface.blit(fnt.render(text, True, theme.style_color(style)), (rect.x + 4, rect.y + i * lh))
+            surface.blit(rendered(fnt, text, theme.style_color(style)), (rect.x + 4, rect.y + i * lh))
         surface.set_clip(clip)
         if len(wrapped) > n:
             bar_h = max(20, rect.height * n // len(wrapped))
@@ -411,7 +422,7 @@ class TextInput:
         shift = max(0, cursor_x - (rect.width - 20))
         clip = surface.get_clip()
         surface.set_clip(rect.inflate(-4, -2))
-        surface.blit(fnt.render(full, True, theme.color("text")), (rect.x + 8 - shift, rect.y + 5))
+        surface.blit(rendered(fnt, full, theme.color("text")), (rect.x + 8 - shift, rect.y + 5))
         if (self.blink % 1.0) < 0.55:
             x = rect.x + 8 + cursor_x - shift
             pygame.draw.rect(surface, color, (x, rect.y + 5, 2, fnt.get_height()))

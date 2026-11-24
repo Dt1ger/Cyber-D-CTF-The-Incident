@@ -5,6 +5,7 @@ from __future__ import annotations
 import pygame
 
 from game.art.animation import AnimationPlayer
+from game.art.effects import translucent
 from game.art.loader import Assets
 from game.engine import config
 from game.engine.scene import Scene
@@ -74,9 +75,7 @@ class GalleryScene(Scene):
     def draw(self, surface: pygame.Surface) -> None:
         bg = self.assets.background("intro", surface.get_size())
         surface.blit(bg.surface, (0, 0))
-        veil = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        veil.fill((4, 6, 14, 200))
-        surface.blit(veil, (0, 0))
+        surface.blit(translucent(surface.get_size(), (4, 6, 14, 200)), (0, 0))
 
         logo = self.assets.logo(config.TITLE, config.SUBTITLE)
         if logo.get_width() > 520:

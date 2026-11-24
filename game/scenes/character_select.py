@@ -14,7 +14,7 @@ from game.scenes.title import spot_rect
 from game.ui import theme
 from game.ui.dialogue import DialogueBox
 from game.ui.panels.base import draw_wrapped
-from game.ui.text import font, glow_text
+from game.ui.text import font, glow_text, rendered
 
 PERK_DETAIL = {
     "steady_hand": "40% chance a premature action doesn't tip off VELVET LOCUST. Each correct "
@@ -92,6 +92,9 @@ class CharacterSelectScene(Scene):
         self.pos = 0.0
         self.turn_from = 0.0
         self.turn_t = 1.0
+        self.locked = {c.id: not is_unlocked(app, c.id) for c in self.chars}
+        self.best = app.saves.load_profile().get("best", {})
+        self._cards: dict[int, pygame.Surface] = {}
         self._layout()
         self._figures()
         self.hits: list[tuple[int, pygame.Rect]] = []
@@ -138,7 +141,7 @@ class CharacterSelectScene(Scene):
         for c in self.chars:
             tier = app.assets.tier_for_zone(0, c.id)
             art = None
-            if not is_unlocked(app, c.id):
+            if self.locked[c.id]:
                 art = app.assets.image(app.assets.character_entry(c.id, tier).get("locked_image"))
                 if art is not None:
                     art = art.subsurface(art.get_bounding_rect())
@@ -217,7 +220,7 @@ class CharacterSelectScene(Scene):
         self.turn(delta - n if delta > n / 2 else delta)
 
     def confirm(self) -> None:
-        if not is_unlocked(self.app, self.char.id):
+        if self.locked[self.char.id]:
             self.app.audio.play("error")
             return
         self.confirmed = True
@@ -276,7 +279,7 @@ class CharacterSelectScene(Scene):
             effects.glow_rect(surface, self.frame, self.char.accent, width=2, radius=10, layers=4, alpha=80)
             head = glow_text("SELECT OPERATIVE", font(30, bold=True), (240, 245, 255), self.char.accent, 5)
             surface.blit(head, head.get_rect(center=(w // 2, int(h * 0.1))))
-            hint = font(15, mono=True).render("<- -> choose    ENTER confirm    ESC back", True, theme.color("dim"))
+            hint = rendered(font(15, mono=True), "<- -> choose    ENTER confirm    ESC back", theme.color("dim"))
             surface.blit(hint, hint.get_rect(midbottom=(w // 2, h - 8)))
         self._info(surface)
         for _, i, x, y, fh, light in self._placements():
@@ -285,13 +288,21 @@ class CharacterSelectScene(Scene):
         self.dialogue.draw(surface)
 
     def _info(self, surface) -> None:
-        c = self.char
         f = self.frame
-        locked = not is_unlocked(self.app, c.id)
         if self.mode == "custom":
-            banner = font(13, bold=True).render("CASE FILES  ·  every analyst plays this mode the same way",
-                                                True, theme.color("amber"))
+            banner = rendered(font(13, bold=True), "CASE FILES  ·  every analyst plays this mode the same way",
+                              theme.color("amber"))
             surface.blit(banner, banner.get_rect(midbottom=(f.centerx, f.top - 4)))
+        layer = self._cards.get(self.index)
+        if layer is None:
+            layer = self._cards[self.index] = self._card(self.char)
+        layer.set_alpha(round(255 * _ease(self.turn_t)))
+        surface.blit(layer, f)
+
+    def _card(self, c) -> pygame.Surface:
+        """The name, role, perk and bio shown in the frame. Built once per analyst per visit."""
+        f = self.frame
+        locked = self.locked[c.id]
         layer = pygame.Surface(f.size, pygame.SRCALPHA)
         name = glow_text(c.name.upper(), font(34, bold=True), c.accent, radius=5)
         layer.blit(name, name.get_rect(midtop=(f.width // 2, 20)))
@@ -311,10 +322,9 @@ class CharacterSelectScene(Scene):
             draw_wrapped(layer, PERK_DETAIL.get(c.perk.id, c.perk.description),
                          pygame.Rect(left.x, y + 44, col_w, left.bottom - y - 44), 14)
             draw_wrapped(layer, c.bio, right, 15, theme.color("text"))
-            best = self.app.saves.load_profile().get("best", {}).get(c.id)
+            best = self.best.get(c.id)
             if best:
                 t = font(13, mono=True).render(f"BEST: {best['rank']} ({best['score']})", True,
                                                theme.color("amber"))
                 layer.blit(t, t.get_rect(bottomright=(right.right, right.bottom)))
-        layer.set_alpha(round(255 * _ease(self.turn_t)))
-        surface.blit(layer, f)
+        return layer

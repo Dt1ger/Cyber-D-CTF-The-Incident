@@ -215,6 +215,8 @@ HOW_TO_PLAY = [
         "base64, hex, or rot13. Peel one layer at a time; undo steps back, reset starts over.",
         "Keyed layers need decode xor <key>. The key is never in the clue. Read the evidence.",
         "Every note lists several flags. Only one answers the clue's question. Hints cost a clean solve.",
+        "Up/Down picks a case; Enter (or just typing) opens it. Inside a case, Up/Down recalls that "
+        "case's past commands, PgUp/PgDn scrolls, and Esc goes back to the list.",
     ]),
     ("Accessibility", [
         "Settings: text size, colorblind palette, CRT scanlines, music/sound volume, mute (F8), dialogue "

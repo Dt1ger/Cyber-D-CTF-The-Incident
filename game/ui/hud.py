@@ -6,9 +6,10 @@ import math
 
 import pygame
 
+from game.art.effects import translucent
 from game.ui import theme
 from game.ui.panels.base import draw_wrapped
-from game.ui.text import font
+from game.ui.text import font, rendered
 from game.world.tilemap import BUS, FLOOR, GATE, RACK, TILE
 
 TOOLS = [("terminal", "T", "TERMINAL"), ("journal", "J", "JOURNAL"), ("board", "B", "BOARD"),
@@ -72,19 +73,14 @@ class HUD:
         self._toolbar(surface)
         self._toasts(surface)
         if prompt:
-            f = font(18, bold=True)
-            t = f.render(prompt, True, theme.color("text"))
+            t = rendered(font(18, bold=True), prompt, theme.color("text"))
             r = t.get_rect(midbottom=(surface.get_width() // 2, surface.get_height() - 64)).inflate(24, 12)
-            bg = pygame.Surface(r.size, pygame.SRCALPHA)
-            bg.fill((6, 10, 22, 220))
-            surface.blit(bg, r)
+            surface.blit(translucent(r.size, (6, 10, 22, 220)), r)
             pygame.draw.rect(surface, theme.accent, r, 1, border_radius=4)
             surface.blit(t, t.get_rect(center=r.center))
 
     def _box(self, surface, rect, edge=None) -> None:
-        bg = pygame.Surface(rect.size, pygame.SRCALPHA)
-        bg.fill((6, 10, 22, 215))
-        surface.blit(bg, rect)
+        surface.blit(translucent(rect.size, (6, 10, 22, 215)), rect)
         pygame.draw.rect(surface, edge or theme.color("panel_edge"), rect, 1, border_radius=5)
 
     def _objective(self, surface) -> None:
@@ -93,17 +89,17 @@ class HUD:
         rect = pygame.Rect(14, 12, 440, 132)
         self._box(surface, rect)
         pygame.draw.line(surface, zone.accent, (rect.x + 6, rect.y), (rect.right - 6, rect.y), 2)
-        head = font(17, bold=True).render(f"ZONE {zone.index}  //  {zone.name.upper()}", True, zone.accent)
+        head = rendered(font(17, bold=True), f"ZONE {zone.index}  //  {zone.name.upper()}", zone.accent)
         surface.blit(head, (rect.x + 12, rect.y + 8))
         obj = st.current
         total = len(st.objectives)
         counter_w = 0
         if obj is not None:
-            counter = font(13, mono=True).render(f"OBJECTIVE {len(st.done) + 1}/{total}", True, theme.accent)
+            counter = rendered(font(13, mono=True), f"OBJECTIVE {len(st.done) + 1}/{total}", theme.accent)
             counter_w = counter.get_width() + 12
             surface.blit(counter, counter.get_rect(topright=(rect.right - 12, rect.y + 30)))
         if zone.phase:
-            phase = font(13, mono=True).render(zone.phase, True, theme.color("dim"))
+            phase = rendered(font(13, mono=True), zone.phase, theme.color("dim"))
             surface.blit(phase, (rect.x + 12, rect.y + 30),
                          pygame.Rect(0, 0, rect.width - 24 - counter_w, phase.get_height()))
         if obj is None:
@@ -135,13 +131,13 @@ class HUD:
         surface.blit(face, fr)
         pygame.draw.rect(surface, char.accent, fr, 2, border_radius=4)
         x = fr.right + 12
-        surface.blit(font(16, bold=True).render(char.name.upper(), True, char.accent), (x, rect.y + 8))
-        perk = font(13).render(f"Perk: {char.perk.name}", True, theme.color("dim"))
+        surface.blit(rendered(font(16, bold=True), char.name.upper(), char.accent), (x, rect.y + 8))
+        perk = rendered(font(13), f"Perk: {char.perk.name}", theme.color("dim"))
         surface.blit(perk, perk.get_rect(topright=(rect.right - 12, rect.y + 10)))
         breach = max(0.0, min(100.0, app.run.breach))
         label, style = ADVERSARY_LABEL.get(st.adversary.state, ("", "dim"))
-        surface.blit(font(13, mono=True, bold=True).render("BREACH CLOCK", True, theme.color("text")), (x, rect.y + 34))
-        adv = font(13, mono=True, bold=True).render(f"LOCUST: {label}", True, theme.style_color(style))
+        surface.blit(rendered(font(13, mono=True, bold=True), "BREACH CLOCK", theme.color("text")), (x, rect.y + 34))
+        adv = rendered(font(13, mono=True, bold=True), f"LOCUST: {label}", theme.style_color(style))
         surface.blit(adv, adv.get_rect(topright=(rect.right - 12, rect.y + 34)))
         bar = pygame.Rect(x, rect.y + 56, rect.right - x - 12, 18)
         pygame.draw.rect(surface, (20, 26, 40), bar, border_radius=3)
@@ -161,7 +157,7 @@ class HUD:
                 seer = seer.copy()
                 seer.set_alpha(min(255, int(255 * min(1.0, self.breach_flash))))
                 surface.blit(seer, seer.get_rect(midright=(rect.x - 8, rect.centery)))
-        t = font(14, mono=True, bold=True).render(f"{breach:4.1f}%", True, (255, 255, 255))
+        t = rendered(font(14, mono=True, bold=True), f"{breach:4.1f}%", (255, 255, 255))
         surface.blit(t, t.get_rect(center=bar.center))
 
     def _minimap(self, surface) -> None:
@@ -225,13 +221,11 @@ class HUD:
             r = pygame.Rect(x, y, bw, 32)
             self.tool_rects[name] = r
             hot = name == want
-            bg = pygame.Surface(r.size, pygame.SRCALPHA)
-            bg.fill((*theme.accent, int(40 + 60 * pulse)) if hot else (6, 10, 22, 215))
-            surface.blit(bg, r)
+            surface.blit(translucent(r.size, (*theme.accent, int(40 + 60 * pulse)) if hot else (6, 10, 22, 215)), r)
             edge = theme.accent if hot or r.collidepoint(mouse) else theme.color("panel_edge")
             pygame.draw.rect(surface, edge, r, 2 if hot else 1, border_radius=4)
-            k = f.render(f"[{key}]", True, theme.accent if not hot else (255, 255, 255))
-            t = f.render(label, True, theme.color("text"))
+            k = rendered(f, f"[{key}]", theme.accent if not hot else (255, 255, 255))
+            t = rendered(f, label, theme.color("text"))
             surface.blit(k, (r.x + 8, r.centery - k.get_height() // 2))
             surface.blit(t, (r.x + 14 + k.get_width(), r.centery - t.get_height() // 2))
             x += bw + gap
@@ -242,7 +236,7 @@ class HUD:
         f = font(17, bold=True)
         for text, style, left, total in self.toasts:
             alpha = min(1.0, left / 0.5, (total - left) / 0.15 + 0.2)
-            t = f.render(text, True, theme.style_color(style) if style != "normal" else theme.color("text"))
+            t = rendered(f, text, theme.style_color(style) if style != "normal" else theme.color("text")).copy()
             r = t.get_rect(midtop=(w // 2, y)).inflate(26, 12)
             bg = pygame.Surface(r.size, pygame.SRCALPHA)
             bg.fill((6, 10, 22, int(225 * alpha)))
